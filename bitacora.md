@@ -85,7 +85,12 @@ Decisiones:
 - README actualizado con las secciones 2 a 5 y la diferencia entre las 60.533.559 filas reales y la estimación de 150 millones del enunciado.
 - Se eliminó `notebooks/00test.ipynb`: su configuración ya está en la sección 1.
 
-Pendiente: ejecutar en Databricks la sección 3 (planes y resultados de 3b y 3c con el filtro), la sección 4 completa con sus tablas de evidencia, y la sección 5.
+Corrida completa en Databricks (serverless), sin errores. Resultados trasladados al notebook:
+
+- 3c con filtro: el primer buque queda en 5.771 km y todos bajo la cota de 10.890 km. Se descartó el 0,09% de los segmentos, que sumaba el 82,9% de la distancia sin filtro. JUSTIN PAUL ECKSTEIN (primer lugar, 18,5 nudos sostenidos) queda señalado para revisión con el umbral por tipo de buque.
+- Sección 4: con `delta.targetFileSize = 32mb`, `OPTIMIZE` dejó 60 archivos. La consulta del tablero lee 1 de 60 (1,67%) frente a 1 de 7 (14,29%) sin Z-order, y el tamaño baja de 1,78 GB a 1,52 GB. La trayectoria lee 7 archivos en vez de 6, pero unos 190 MB en vez de 1,6 GB.
+- Anexo A: el descarte total conserva el 24,54% de las filas y el razonado el 99,22%.
+- Sección 5: faltan comentarios de columna en `ais_quality_report` (0 de 4) y `ais_daily_profile` (1 de 4).
 
 ## Aportes por integrante
 

@@ -146,7 +146,7 @@ Cada pregunta tiene su consulta, su plan (`explain("formatted")`) y una ficha co
 |---|---|---|
 | 3a Buques distintos por día | Entre 19.615 y 21.153 por día; 31.871 en la semana | `count_distinct` en producción: `approx_count_distinct` sobrestima entre 1,8% y 9,6%, tanto como la variación real entre días. El exacto usa dos intercambios y el aproximado uno |
 | 3b Tipos de buque con más tráfico | `Towing` (31) y `Pleasure craft` (37) suman el 51,27% de las posiciones; `Cargo` y `Tanker` son los más rápidos | Catálogo de tipos como tabla gobernada, unido con `broadcast`. `SOG = 102,3` (no disponible) queda fuera del promedio |
-| 3c Buques con más distancia | Top 10 por distancia haversine entre posiciones consecutivas | Se descartan segmentos con velocidad implícita sobre 35 nudos. Sin filtro el primero sumaba 7,9 millones de km, imposible físicamente. Un solo intercambio por `MMSI` para deduplicar, ordenar y agregar |
+| 3c Buques con más distancia | Entre 3.943 y 5.771 km en la semana; cruceros y buques de carga de línea regular dominan el top 10 | Se descartan segmentos con velocidad implícita sobre 35 nudos: el 0,09% de los segmentos, que sumaba el 82,9% de la distancia sin filtro. Sin filtro el primero sumaba 7,9 millones de km, imposible físicamente. Un solo intercambio por `MMSI` para deduplicar, ordenar y agregar |
 | 3d Celdas con más tráfico | Seattle y San Diego concentran las celdas H3 de resolución 8 con más posiciones; 3 de 10 cruzan con el WPI | Cruce con el WPI en la celda madre de resolución 6, porque el punto del puerto cae a kilómetros del tráfico |
 | 3e Buques de toda la semana | 39,74% transmitió los 7 días; 18,81% un solo día, sobre todo en Annapolis, Seattle y Fort Lauderdale | `broadcast` explícito de la lista de visitantes para evitar redistribuir 60,5 millones de filas |
 
@@ -162,9 +162,18 @@ Propósito declarado: el tablero diario del operador, que consulta las posicione
 | Tamaño de archivo | `delta.targetFileSize = 32mb` antes de `OPTIMIZE`: con el tamaño por defecto cada día quedaría en un solo archivo y el Z-order no tendría archivos que descartar |
 | Variantes comparadas | CSV, Parquet por `day`, Delta por `day`, Delta por `day` con `ZORDER`; `CLUSTER BY` como variante opcional |
 
-La evidencia se registra en las secciones 4.5 y 4.6 del notebook: bytes y archivos de la versión vigente de cada tabla (`DESCRIBE DETAIL`), archivos leídos por la consulta (`_metadata.file_path`, equivalente a `INPUT_FILE_NAME`, que Unity Catalog no admite) y planes antes y después de `OPTIMIZE`. En una prueba local con el día 1, la consulta del tablero pasó de leer 12 de 12 archivos a 1 de 8.
+La evidencia se registra en las secciones 4.5 y 4.6 del notebook: bytes y archivos de la versión vigente de cada tabla (`DESCRIBE DETAIL`), archivos leídos por la consulta (`_metadata.file_path`, equivalente a `INPUT_FILE_NAME`, que Unity Catalog no admite) y planes antes y después de `OPTIMIZE`. Resultados de la semana, para la consulta de un día en la bahía de San Diego (139.844 filas en todas las variantes):
 
-La 4.6 compara con una consulta no declarada, la trayectoria de un buque por `MMSI`. Frente a la tabla sin ordenar también mejora (de 12 a 2 archivos en la prueba local), pero menos que el tablero; el costo real del layout elegido es frente a un layout por `MMSI`, que haría rápida la trayectoria y lento el tablero.
+| Variante | Tamaño | % frente al CSV | Archivos | Archivos leídos |
+|---|---|---|---|---|
+| CSV | 6,04 GB | 100% | 7 | |
+| Parquet por `day` | 1,75 GB | 29,04% | 42 | 6 (14,29%) |
+| Delta por `day` | 1,78 GB | 29,47% | 7 | 1 (14,29%) |
+| Delta por `day` + `ZORDER` | 1,52 GB | 25,16% | 60 | 1 (1,67%) |
+
+La partición descarta 6 de los 7 días. El Z-order reduce los datos leídos entre 6 y 15 veces: la consulta pasa de abrir el archivo completo del día (253 a 288 MB) a abrir 1 de 60 archivos de 19 a 43 MB.
+
+La 4.6 compara con una consulta no declarada, la trayectoria de un buque por `MMSI` durante la semana. Es la única que lee más archivos después del Z-order (de 6 a 7), porque la partición obliga a abrir al menos un archivo por día y el Z-order reparte un buque que se desplaza entre zonas. En volumen de datos también mejora (unos 190 MB frente a 1,6 GB). El costo real del layout elegido es frente a un layout por `MMSI`, que haría rápida la trayectoria y lento el tablero.
 
 ## 5. Gobernanza
 
@@ -172,7 +181,7 @@ La 4.6 compara con una consulta no declarada, la trayectoria de un buque por `MM
 - La capa `raw` no se modifica después de la carga.
 - Todas las tablas tienen comentario de tabla. `ais`, `ais_descarte_total`, `world_port_index` y `vessel_type_catalog` tienen además comentario por columna, y `ais` tiene propiedades con fuente y cobertura.
 - Los nombres de tabla se escriben siempre completos (`catalogo.esquema.tabla`).
-- La sección 5 del notebook consulta `information_schema` y muestra, por tabla, el comentario y cuántas columnas tienen comentario.
+- La sección 5 del notebook consulta `information_schema` y muestra, por tabla, el comentario y cuántas columnas tienen comentario. Pendiente: comentarios de columna en `ais_quality_report` y `ais_daily_profile`, que hoy solo tienen comentario de tabla.
 
 ## Bitácora y aportes
 
