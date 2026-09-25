@@ -2,7 +2,18 @@
 
 Este doc es para hacer tracking de todos los issues y decisiones de diseño que se tomen al rededor del proyecto. 
 
+## 2026-09-22 · Arranque del repositorio
+
+Autor: Camilo.
+
+- Repositorio, `.gitignore`, README y esta bitácora.
+- `notebooks/00test.ipynb` con la configuración inicial del catálogo y el volumen en Databricks.
+- Primera versión de `ingest.ipynb`: descarga de 3 de los 7 días y carga a `ocean_watch.raw.ais`.
+- Enunciado (`SID26.2.ProyectoEntrega1.pdf`) agregado al repo como referencia.
+
 ## 2026-09-23 · Ingesta (requisito 1)
+
+Autor: Juan.
 
 Reescritura de `ingest.ipynb`.
 
@@ -24,7 +35,17 @@ Decisiones:
 - La tabla raw queda sin particionar a propósito: es la línea base para el experimento de almacenamiento (requisito 4).
 - Verificado localmente con el día 1: 8.808.904 filas, todas convierten a los tipos declarados.
 
+## 2026-09-23 · World Port Index y primera versión de las preguntas (requisito 3)
+
+Autor: Nicolas.
+
+- Carga del World Port Index a `ocean_watch.raw.world_port_index` (sección 1.8), insumo del cruce de la pregunta 3d.
+- Primera versión de las preguntas 3a a 3e: buques únicos por día, tipos de buque y velocidad promedio, distancia por buque, zonas de mayor tráfico con H3 y buques de un solo día.
+- Estas versiones se revisaron el 2026-09-25 (planes de ejecución, catálogo de tipos y corrección de distancias en 3c).
+
 ## 2026-09-24 · Exploración, perfilamiento y almacenamiento (requisitos 2 y 4)
+
+Autor: Camilo.
 
 Reescritura de la sección 2 y construcción completa de la sección 4 de `ingest.ipynb`, más un Anexo A de limpieza. Alcance: cierre del diagnóstico de calidad y del experimento de almacenamiento para un propósito.
 
@@ -52,6 +73,7 @@ Sección 4 (almacenamiento óptimo para un propósito):
 - Evidencia definida: bytes en disco y número de archivos por variante (CSV, Parquet, Delta sin y con `ZORDER`), archivos leídos por la consulta declarada (`input_file_name()`), plan de ejecución (`explain("formatted")`) antes y después de `OPTIMIZE`.
 - Se declaró explícitamente el costo que el layout elegido impone sobre un propósito no declarado (reconstrucción de trayectoria por `MMSI`): el `ZORDER` por `LAT`/`LON` reparte las posiciones de un mismo buque entre más archivos. Queda medido en la sección 4.6 como tradeoff documentado, no oculto.
 - Pendiente: correr las celdas de escritura de variantes y `OPTIMIZE`, y trasladar las cifras reales a las tablas de evidencia de 4.5 y 4.6 (quedaron con estructura lista y celdas vacías).
+- Nota posterior: resuelto el 2026-09-25. La medición de archivos leídos pasó a `_metadata.file_path` y la corrida mostró que la trayectoria no se reparte en muchos más archivos (de 6 a 7, con menos bytes leídos). Ver la entrada de esa fecha.
 
 Anexo A (limpieza por descarte, exploratorio):
 
@@ -60,6 +82,8 @@ Anexo A (limpieza por descarte, exploratorio):
 - El resultado del descarte total se persiste en `ocean_watch.curated.ais_descarte_total` (esquema `curated`, nuevo, separado de `raw`), particionado por `day`, con comentario de tabla y comentarios de columna reutilizados de `COLUMN_COMMENTS` (1.5), para trazabilidad de gobernanza.
 
 ## 2026-09-25 · Preguntas de negocio, gobernanza y documentación (requisitos 3, 5 y 6)
+
+Autor: Juan.
 
 Issues encontrados:
 
