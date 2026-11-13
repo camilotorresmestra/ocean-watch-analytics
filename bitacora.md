@@ -123,3 +123,68 @@ Corrida completa en Databricks (serverless), sin errores. Resultados trasladados
 | Juan | Sección 1 (ingesta, integridad, esquema, reconciliación), README; sección 3 revisada (planes, catálogo de tipos, corrección de 3c) y sección 5 |
 | Nicolas | Carga del World Port Index (1.8) y primera versión de las preguntas 3a a 3e |
 | Camilo | Sección 2 (perfilamiento y reglas R1 a R9), diseño de la sección 4 y Anexo A |
+
+# Entrega 2
+## 2026-11-12 - Definición de tareas 
+
+We decided to tackle the project in 3 waves or iterations of around 5 days each, working 3 hours/day.
+
+### Waves and duration
+
+This plan assumes four weeks before the final presentation. If you have three weeks, shorten Wave 2 and remove the bonus.
+
+### Wave 1: working base, 5 working days
+
+Purpose: each layer has a table with test data.
+
+| Person | Deliverable | Evidence |
+| --- | --- | --- |
+| A | Auto Loader from the landing volume to bronze, with a checkpoint and audit columns | Add one file and the micro-batch starts. Restart the stream and it does not process the file again. |
+| B | Quality profile of the sample day, and the rules in `rules.py` | Notebook with counts and percentages for nulls, coordinates, speed and duplicates. |
+| C | DDL for the three gold tables, and dashboard v0 with synthetic data | Open the dashboard. Each tile shows its metric definition. |
+
+Budget: 10 to 12 hours per person. Close the wave with a 15-minute demonstration.
+
+### Wave 2: real pipeline and operation, 5 working days
+
+This is the heaviest wave. It holds the largest part of the grade: quality 15, orchestration 20 and governance 10.
+
+| Person | Deliverable | Evidence |
+| --- | --- | --- |
+| A | Job with tasks, dependencies, date parameter, retries, schedule and one backfill | Run the job on a schedule. Make one task fail and show that gold does not run. Run the backfill for the previous day and show the same row count. |
+| B | Rules in streaming, quarantine with a cause, metrics table, role permissions and lineage | Show the output of `SHOW GRANTS`, the lineage tab and the metrics for accepted and rejected rows. |
+| C | Gold tables from silver, and the dashboard connected to gold | Trace one value in the map to its gold query. |
+
+C has two free days at the start. While B moves silver to streaming, C continues the dashboard. From day 3, C builds gold.
+
+Budget: 12 to 15 hours per person. This wave causes the delay if a task is late.
+
+### Wave 3: machine learning and final content, 4 working days
+
+| Person | Deliverable |
+| --- | --- |
+| B | Features, one MLflow experiment with comparable metrics, and a registered model with a signature and an alias |
+| A | The machine learning task inside the job, with the date as a parameter |
+| C | Anomalies or predictions in the dashboard, and the final gold data contract |
+
+Budget: 10 hours per person. If Wave 2 is two days late, cut this wave to 3 days and remove the bonus.
+
+### Close: 3 days
+
+This is not a build wave. Link the evidence to each rubric item. Write the final README. Rehearse and present. Each person explains one part that they did not build.
+
+### Rules that keep the schedule
+
+1. Close each wave with a demonstration and one log entry. A wave without a demonstration is not complete.
+2. If a wave is two days late, remove the bonus first. Then remove the dashboard polish. Do not remove the quality gates or the orchestration.
+3. Review a pull request in 24 hours. If the review is late, the author continues and marks the pull request as pending.
+
+Total: 4 weeks, about 45 hours per person. Grade share: A 35, B 28, C 22 plus the 5-point bonus.
+
+### Discussion
+A evidently has to do more work, thus the workload from the Firs Wave is switched with B, who will be supported by C.
+
+### Imediate Actions (verifiable at Saturday Nov 14)
+- A: Camilo Torres: to start defining quality rules for silver (start coding them also)
+- B: Juan David Perez: to migrate all raw data available in the Vessel Traffic website to a staging area
+- C: Nicolas Klopstock Start defining and implementing the scaffold and architecture with placeholders to be filled with code from other team members. Sketch a dashboard.
