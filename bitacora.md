@@ -188,3 +188,23 @@ A evidently has to do more work, thus the workload from the Firs Wave is switche
 - A: Camilo Torres: to start defining quality rules for silver (start coding them also)
 - B: Juan David Perez: to migrate all raw data available in the Vessel Traffic website to a staging area
 - C: Nicolas Klopstock Start defining and implementing the scaffold and architecture with placeholders to be filled with code from other team members. Sketch a dashboard.
+
+## 2026-11-22 · Reestructuración del repositorio
+
+Autor: Juan.
+
+Con la Entrega 2 el repositorio pasa de un notebook a un pipeline de varias tareas, y la raíz plana ya no mostraba qué pieza corresponde a cada requisito.
+
+Cambios:
+
+- `ingest.ipynb` pasa a `notebooks/entrega1/` sin cambios de contenido.
+- `streaming.ipynb` pasa a `notebooks/pipeline/02_bronze.ipynb`. Cada notebook de `notebooks/pipeline/` será una tarea del job (requisito 3), numerada según el orden de dependencias. Su README lista las tareas y su estado.
+- Los enunciados pasan a `docs/enunciados/`, y se agrega el de la Entrega 2.
+- Nuevo paquete `src/oceanwatch` con `config.py` (catálogo, esquemas por capa, rutas y umbrales de calidad) y `schema.py` (esquema AIS y opciones de lectura). El esquema estaba copiado en `ingest.ipynb` y en `streaming.ipynb`.
+- README actualizado con la nueva estructura.
+
+Pendiente (PR aparte):
+
+- `02_bronze` todavía escribe en `workspace.default`. Se migra a `ocean_watch.bronze` usando `oceanwatch.config`, junto con la validación del encabezado y la sesión en UTC.
+- Auto Loader no lee zip, así que hace falta la tarea `01_landing` que descargue y descomprima el día.
+- La rama `feat/queries` (septiembre) modifica `ingest.ipynb` en su ruta anterior. Nunca se fusionó a `main`, que ya tiene las preguntas 3a a 3e revisadas; si se necesitara, hay que rebasarla sobre la nueva ruta.

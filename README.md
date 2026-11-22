@@ -1,20 +1,37 @@
 # ocean-watch-analytics
 
-Proyecto del curso Soluciones Intensivas en Datos (MINE 4213, Uniandes 2026-20). OceanWatch Analytics: el lakehouse del tráfico marítimo, construido en Databricks Free Edition con datos AIS de NOAA.
+Proyecto del curso Soluciones Intensivas en Datos (MINE 4213, Uniandes 2026-20). OceanWatch Analytics: el lakehouse del tráfico marítimo, construido en Databricks con datos AIS de NOAA. La Entrega 1 se hizo en Databricks Free Edition; la Entrega 2 se hace en el workspace institucional.
 
-## Contenido del repositorio
+## Estructura del repositorio
 
-| Archivo | Descripción |
-|---|---|
-| `ingest.ipynb` | Notebook único de la Entrega 1: ingesta, exploración, preguntas de negocio, almacenamiento y gobernanza |
-| `bitacora.md` | Registro de avance, issues y decisiones por clase |
-| `SID26.2.ProyectoEntrega1.pdf` | Enunciado de la Entrega 1 |
+```
+├── README.md
+├── bitacora.md                   # avance, issues y decisiones por fecha y autor
+├── docs/
+│   └── enunciados/               # Entrega1.pdf y Entrega2.pdf
+├── notebooks/
+│   ├── entrega1/ingest.ipynb     # Entrega 1: ingesta, exploración, preguntas, almacenamiento y gobernanza
+│   └── pipeline/                 # Entrega 2: un notebook por tarea del job (ver su README)
+└── src/oceanwatch/               # código compartido por los notebooks
+    ├── config.py                 # catálogo, esquemas, rutas y umbrales de calidad
+    └── schema.py                 # esquema AIS y opciones de lectura CSV
+```
 
 ## Cómo ejecutar
 
-1. Importar el repositorio en Databricks (Git folder) o subir `ingest.ipynb`.
+### Entrega 1
+
+1. Importar el repositorio en Databricks (Git folder) o subir `notebooks/entrega1/ingest.ipynb`.
 2. Ejecutar el notebook completo en cómputo serverless. La descarga de los 7 días toma entre 20 y 30 minutos.
 3. Ejecuciones posteriores omiten los días ya descargados y verificados.
+
+### Entrega 2
+
+En construcción. El orden de las tareas y su estado están en [`notebooks/pipeline/README.md`](notebooks/pipeline/README.md).
+
+## Entrega 1
+
+Las secciones siguientes documentan la Entrega 1 (`notebooks/entrega1/ingest.ipynb`).
 
 ## Datos
 
