@@ -208,3 +208,48 @@ Pendiente (PR aparte):
 - `02_bronze` todavía escribe en `workspace.default`. Se migra a `ocean_watch.bronze` usando `oceanwatch.config`, junto con la validación del encabezado y la sesión en UTC.
 - Auto Loader no lee zip, así que hace falta la tarea `01_landing` que descargue y descomprima el día.
 - La rama `feat/queries` (septiembre) modifica `ingest.ipynb` en su ruta anterior. Nunca se fusionó a `main`, que ya tiene las preguntas 3a a 3e revisadas; si se necesitara, hay que rebasarla sobre la nueva ruta.
+
+## 2026-11-22 · Pipeline de la Entrega 2 (requisitos 1 a 6)
+
+Autor: Juan (con Claude Code).
+
+Primera versión completa del pipeline en `src/oceanwatch` (lógica con tests) y `notebooks/pipeline` (una tarea del job por notebook), más `databricks.yml` con los jobs `ocean_watch_setup`, `ocean_watch_daily` y `ocean_watch_train`.
+
+Decisiones:
+
+- **Feed diario.** `01_landing` entrega un día por corrida. Con `fecha=auto`, entrega el siguiente sin manifiesto a partir del 2023-06-08 (el día después del corpus de la Entrega 1); con una fecha explícita sirve para backfill. Reutiliza la descarga con verificación de la Entrega 1. El CSV se escribe como `_AIS_….csv.partial` y se renombra al final, para que Auto Loader no lea archivos a medio escribir.
+- **Bronce inmutable.** Auto Loader con esquema explícito, `availableNow` y checkpoint; solo append y columnas de auditoría. Ni limpieza ni deduplicación.
+- **Plata con `foreachBatch`.** Cada micro-lote tiene tres salidas (plata, cuarentena y métricas). La deduplicación por (`MMSI`, `BaseDateTime`) se hace dentro del lote (las copias van a cuarentena) y contra lo ya cargado con un `MERGE` que solo inserta claves nuevas. Se descartó `dropDuplicatesWithinWatermark`: no deja rastro de lo descartado y no protege contra un archivo reenviado días después.
+- **Tolerancia a fallos.** Plata usa `MERGE` y cuarentena y métricas usan appends idempotentes (`txnAppId`/`txnVersion`), así que repetir un lote con el mismo `batch_id` no duplica nada. El parámetro `simular_fallo` hace fallar el primer lote después de escribir la cuarentena; el reintento de la tarea lo completa. Probado en local: mismos conteos que sin fallo.
+- **Umbral de velocidad por tipo de buque.** Se cierra el refinamiento pendiente de la Entrega 1 (R3): 60 nudos para los tipos 40-49, 51 y 55, y 35 para el resto.
+- **H3 nativo.** Plata y oro usan `h3_longlatash3` y las funciones nativas de Databricks en lugar de la UDF de pandas de la pregunta 3d, cuyo plan mostró que `ArrowEvalPython` era el paso más costoso.
+- **Oro idempotente por día** (`replaceWhere`) y conciliado con plata: la suma de posiciones de trayectorias y de la matriz de tráfico debe ser igual a las filas de plata del día.
+- **Contrato de oro** en `src/oceanwatch/contract.py`. Se aplica como comentarios en Unity Catalog y genera `docs/contrato_oro.md`; un test verifica que el documento y el esquema real coincidan.
+- **ML.** Isolation Forest por buque y día sobre variables de `gold.vessel_daily_track`, con tres corridas de `contamination` en MLflow. Al no haber etiquetas, las corridas se comparan con las reglas físicas como señal de referencia. Se registra la mejor en Unity Catalog con el alias `champion`, que es la que carga la tarea diaria.
+
+Issue encontrado y calibración de `posicion_en_agua`:
+
+- La primera versión (máscara de Natural Earth en H3 res 5 con 1 anillo de margen y celdas navegables con 5 buques o más) mandaba a cuarentena el 6,1% de una muestra real. Eran falsos positivos: buques reales en el Misisipi y en el puerto de Savannah, que Natural Earth dibuja como tierra.
+- Medido sobre el día completo del 2023-06-08 (8,9 millones de filas), con ese mismo día como referencia navegable:
+
+| Margen | Celdas navegables | Filas rechazadas | Buques |
+|---|---|---|---|
+| 1 anillo | 5 buques o más | 0,76% | 483 |
+| 1 anillo | 2 buques o más, dilatadas 1 anillo | 0,18% | 178 |
+| 2 anillos | 2 buques o más, dilatadas 1 anillo | 0,09% | 116 |
+| 3 anillos | 2 buques o más, dilatadas 1 anillo | 0,06% | 91 |
+
+- Se eligió 2 anillos, 2 buques y 1 anillo de dilatación. Con 3 anillos la mejora es pequeña y la máscara pierde los errores cerca de la costa. Lo que se rechaza mezcla errores claros (posiciones que saltan más de un grado de latitud, puntos en Misuri lejos de ríos navegables) con buques reales en vías pequeñas, como el delta del Sacramento. En Databricks la referencia es la semana completa, así que se espera menos.
+
+Validación:
+
+- 36 tests locales (Spark 3.5 + Delta, con H3 emulado con la librería `h3`): reglas una por una, micro-lote de plata, reintento del mismo lote, stream con reinicio desde el checkpoint, fallo simulado, oro, descarga con reintentos, MLflow y contrato.
+- Corrida local de punta a punta sobre 300.000 filas reales del 2023-06-08 (landing por la ruta real de descarga, bronce con el equivalente OSS de Auto Loader, plata, oro y ML): 99,2% aprobadas, `mmsi_formato` 0,08% (igual que en la Entrega 1) y oro conciliado con plata.
+- No se probó en Databricks: Auto Loader, el bundle, los permisos, el registro en Unity Catalog ni el tablero.
+
+Pendiente:
+
+- Desplegar el bundle en el workspace institucional y correr setup, varios días del feed y el entrenamiento.
+- Armar el tablero con `dashboards/consola.sql` y exportarlo al repo.
+- Crear los grupos `oceanwatch_ingenieros`, `oceanwatch_analistas` y `oceanwatch_cientificos`, o cambiar sus nombres en `config.py`.
+- Bono de Delta Sharing.

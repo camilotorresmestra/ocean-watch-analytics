@@ -7,14 +7,26 @@ Proyecto del curso Soluciones Intensivas en Datos (MINE 4213, Uniandes 2026-20).
 ```
 ├── README.md
 ├── bitacora.md                   # avance, issues y decisiones por fecha y autor
+├── databricks.yml                # jobs del pipeline como código (Databricks Asset Bundle)
+├── dashboards/consola.sql        # datasets de la consola (tablero)
 ├── docs/
-│   └── enunciados/               # Entrega1.pdf y Entrega2.pdf
+│   ├── enunciados/               # Entrega1.pdf y Entrega2.pdf
+│   └── contrato_oro.md           # contrato de datos de la capa oro (generado)
 ├── notebooks/
 │   ├── entrega1/ingest.ipynb     # Entrega 1: ingesta, exploración, preguntas, almacenamiento y gobernanza
 │   └── pipeline/                 # Entrega 2: un notebook por tarea del job (ver su README)
-└── src/oceanwatch/               # código compartido por los notebooks
-    ├── config.py                 # catálogo, esquemas, rutas y umbrales de calidad
-    └── schema.py                 # esquema AIS y opciones de lectura CSV
+├── src/oceanwatch/               # lógica del pipeline, importada por los notebooks
+│   ├── config.py                 # catálogo, esquemas, rutas y umbrales
+│   ├── schema.py                 # esquema AIS y opciones de lectura CSV
+│   ├── landing.py                # descarga, integridad y entrega del día
+│   ├── rules.py                  # compuertas de calidad
+│   ├── silver.py                 # micro-lote de plata: cuarentena, MERGE, métricas
+│   ├── gold.py                   # tablas del negocio
+│   ├── refs.py                   # máscara de tierra, celdas navegables, puertos
+│   ├── ml.py                     # variables y modelo de anomalías
+│   ├── contract.py               # contrato de oro (comentarios y documento)
+│   └── geo.py                    # H3 y distancias
+└── tests/                        # pytest con Spark local
 ```
 
 ## Cómo ejecutar
@@ -27,7 +39,48 @@ Proyecto del curso Soluciones Intensivas en Datos (MINE 4213, Uniandes 2026-20).
 
 ### Entrega 2
 
-En construcción. El orden de las tareas y su estado están en [`notebooks/pipeline/README.md`](notebooks/pipeline/README.md).
+Ver [`notebooks/pipeline/README.md`](notebooks/pipeline/README.md): despliegue del bundle, orden de los jobs y guion de las demostraciones.
+
+## Entrega 2
+
+```
+NOAA zip ──01_landing──> landing/*.csv ──02_bronze (Auto Loader)──> bronze.ais
+   ──03_silver (compuertas)──> silver.ais ──04_gold──> gold.vessel_daily_track ──06_ml_score──> gold.vessel_speed_anomalies
+                          └──> silver.ais_quarantine     gold.port_presence
+                          └──> silver.quality_metrics    gold.traffic_cell_hourly ──> consola
+```
+
+| # | Requisito | Dónde | Evidencia |
+|---|---|---|---|
+| 1 | Ingesta en streaming | `01_landing`, `02_bronze`, `03_silver` | Checkpoints en `/Volumes/ocean_watch/bronze/ais_feed/_checkpoints`; deduplicación por (`MMSI`, `BaseDateTime`) en plata; demostración `simular_fallo=si` |
+| 2 | Capas con calidad como compuerta | `src/oceanwatch/rules.py`, `silver.py`, `gold.py` | `silver.ais_quarantine` con `failed_rules`; `silver.quality_metrics`; oro solo lee plata y concilia sus conteos en `04_gold` |
+| 3 | Orquestación | `databricks.yml` | Job `ocean_watch_daily`: 5 tareas con dependencias, parámetro `fecha`, reintentos, alertas, regla de duración y horario |
+| 4 | Consola | `dashboards/consola.sql` | Mapa por celda, ranking de puertos, buques en puerto, anomalías y calidad del día |
+| 5 | Gobernanza | `00_setup`, `docs/contrato_oro.md` | Esquema por capa, `GRANT` por rol, comentarios del contrato en cada tabla de oro, linaje de Unity Catalog |
+| 6 | ML con MLflow | `05_ml_train`, `06_ml_score`, `src/oceanwatch/ml.py` | Experimento con 3 corridas, modelo en `ocean_watch.ml.speed_anomaly_detector@champion`, puntuación diaria en el job |
+| 7 | Repositorio y bitácora | este README, `bitacora.md` | |
+
+### Compuertas de plata
+
+| Regla | Equivale a (Entrega 1) | Condición para pasar |
+|---|---|---|
+| `lectura_valida` | R6 | `_corrupt_record` nulo |
+| `mmsi_formato` | R1 | `MMSI` de 9 dígitos |
+| `timestamp_presente` | | `BaseDateTime` no nulo |
+| `fecha_del_archivo` | R7 | `BaseDateTime` cae en el día del nombre del archivo |
+| `coordenadas_en_rango` | R2 | `LAT` en [-90, 90] y `LON` en [-180, 180] |
+| `coordenadas_no_cero` | | La posición no es (0, 0) |
+| `posicion_en_agua` | nueva | No cae tierra adentro (Natural Earth con 2 anillos H3 de margen), salvo en celdas navegables observadas |
+| `velocidad_plausible` | R3 | `SOG` entre 0 y 35 nudos (60 para los tipos 40-49, 51 y 55), o no disponible |
+| `duplicado_mmsi_timestamp` | R8, R9 | Primera copia de la clave; las demás van a cuarentena o se descartan en el `MERGE` |
+
+Los valores de no disponible (R4 `Heading = 511`, R5 `IMO` ausente, `SOG = 102,3`, `COG = 360`) no son compuertas: se normalizan a null y quedan en `quality_flags`.
+
+Sobre una muestra real de 300.000 filas del 2023-06-08, corrida de punta a punta en local: 99,2% aprobadas; `mmsi_formato` 0,08% (igual que en la Entrega 1); `velocidad_plausible` 0,02%. La calibración de `posicion_en_agua` está en la bitácora del 2026-11-22.
+
+### Fuentes adicionales
+
+- **Natural Earth 10m** (`ne_10m_land`, `ne_10m_lakes`, v5.1.2, dominio público), para la máscara de tierra: <https://www.naturalearthdata.com/>.
 
 ## Entrega 1
 

@@ -1,0 +1,9 @@
+# Dependencias para correr los tests locales (pytest tests). Requiere Java 17.
+pyspark==3.5.3
+delta-spark==3.2.1
+h3==4.1.2
+pandas
+pyarrow
+scikit-learn==1.5.2
+mlflow==2.17.2
+pytest
