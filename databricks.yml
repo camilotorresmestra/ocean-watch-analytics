@@ -1,0 +1,154 @@
+# Databricks Asset Bundle: define los jobs del pipeline como código (requisito 3).
+#
+#   databricks bundle validate
+#   databricks bundle deploy -t dev --var alert_email=<correo del equipo>
+#   databricks bundle run ocean_watch_setup -t dev          # una vez
+#   databricks bundle run ocean_watch_train -t dev          # cuando oro tenga días
+#   databricks bundle run ocean_watch_daily -t dev          # un día (fecha=auto)
+#   databricks bundle run ocean_watch_daily -t dev --params fecha=2023-06-08   # backfill
+#
+# Las tareas corren en cómputo serverless (no se declara clúster).
+
+bundle:
+  name: ocean_watch_analytics
+
+variables:
+  alert_email:
+    description: Correo que recibe las alertas de fallo y de duración (obligatorio, --var alert_email=...)
+  schedule_status:
+    description: PAUSED o UNPAUSED. Se despausa para la demostración de la ejecución programada.
+    default: PAUSED
+
+targets:
+  dev:
+    mode: development
+    default: true
+  prod:
+    mode: production
+
+resources:
+  jobs:
+    ocean_watch_daily:
+      name: ocean_watch_daily
+      description: >
+        Pipeline diario de OceanWatch: llegada del archivo del día, bronce (Auto Loader),
+        plata (compuertas de calidad), oro (modelo del negocio) y puntuación de anomalías.
+
+      # Los streams comparten checkpoints: dos corridas a la vez no deben solaparse.
+      max_concurrent_runs: 1
+      queue:
+        enabled: true
+
+      parameters:
+        - name: fecha
+          default: auto
+        - name: simular_fallo
+          default: "no"
+
+      schedule:
+        quartz_cron_expression: "0 0 6 * * ?"
+        timezone_id: America/Bogota
+        pause_status: ${var.schedule_status}
+
+      email_notifications:
+        on_failure:
+          - ${var.alert_email}
+        on_duration_warning_threshold_exceeded:
+          - ${var.alert_email}
+
+      health:
+        rules:
+          - metric: RUN_DURATION_SECONDS
+            op: GREATER_THAN
+            value: 3600
+
+      timeout_seconds: 7200
+
+      tasks:
+        - task_key: landing
+          description: Descarga y verifica el zip del día y deja el CSV en landing/
+          notebook_task:
+            notebook_path: ./notebooks/pipeline/01_landing.py
+            base_parameters:
+              fecha: "{{job.parameters.fecha}}"
+          max_retries: 2
+          min_retry_interval_millis: 60000
+          retry_on_timeout: true
+          timeout_seconds: 1800
+
+        - task_key: bronze
+          description: Auto Loader de landing/ a ocean_watch.bronze.ais
+          depends_on:
+            - task_key: landing
+          notebook_task:
+            notebook_path: ./notebooks/pipeline/02_bronze.py
+          max_retries: 2
+          min_retry_interval_millis: 30000
+          timeout_seconds: 1800
+
+        - task_key: silver
+          description: Compuertas de calidad, cuarentena, deduplicación y métricas
+          depends_on:
+            - task_key: bronze
+          notebook_task:
+            notebook_path: ./notebooks/pipeline/03_silver.py
+            base_parameters:
+              simular_fallo: "{{job.parameters.simular_fallo}}"
+              run_id: "{{job.run_id}}"
+          max_retries: 2
+          min_retry_interval_millis: 30000
+          timeout_seconds: 3600
+
+        - task_key: gold
+          description: Trayectorias, presencia en puertos y matriz de tráfico del día
+          depends_on:
+            - task_key: silver
+          notebook_task:
+            notebook_path: ./notebooks/pipeline/04_gold.py
+            base_parameters:
+              fecha: "{{tasks.landing.values.fecha}}"
+          max_retries: 2
+          min_retry_interval_millis: 30000
+          timeout_seconds: 3600
+
+        - task_key: ml_score
+          description: Puntúa el día con el modelo @champion de Unity Catalog
+          depends_on:
+            - task_key: gold
+          notebook_task:
+            notebook_path: ./notebooks/pipeline/06_ml_score.py
+            base_parameters:
+              fecha: "{{tasks.landing.values.fecha}}"
+          max_retries: 1
+          min_retry_interval_millis: 30000
+          timeout_seconds: 1800
+
+    ocean_watch_setup:
+      name: ocean_watch_setup
+      description: Catálogo, esquemas, tablas de referencia, tablas de plata y permisos. Se corre una vez.
+      max_concurrent_runs: 1
+      email_notifications:
+        on_failure:
+          - ${var.alert_email}
+      tasks:
+        - task_key: setup
+          notebook_task:
+            notebook_path: ./notebooks/pipeline/00_setup.py
+          max_retries: 1
+          timeout_seconds: 3600
+
+    ocean_watch_train:
+      name: ocean_watch_train
+      description: >
+        Entrena el detector de anomalías con todo gold.vessel_daily_track y mueve el alias
+        champion a la mejor corrida. Se corre cuando oro tiene varios días.
+      max_concurrent_runs: 1
+      email_notifications:
+        on_failure:
+          - ${var.alert_email}
+      tasks:
+        - task_key: train
+          notebook_task:
+            notebook_path: ./notebooks/pipeline/05_ml_train.py
+          max_retries: 1
+          timeout_seconds: 3600
