@@ -30,7 +30,8 @@ jobs:
 
       - uses: actions/setup-python@v7.1.0
         with:
-          python-version: "3.12"
+          # 3.11: pyspark 3.5 importa distutils, que Python 3.12 eliminó.
+          python-version: "3.11"
           cache: pip
           cache-dependency-path: requirements-dev.txt
 
