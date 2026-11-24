@@ -32,6 +32,8 @@ databricks bundle run ocean_watch_daily -t dev                          # 2023-0
 databricks bundle run ocean_watch_train -t dev                          # con varios días en oro
 ```
 
+`dev` despliega en `/Workspace/Shared/ocean_watch_analytics/<usuario>/dev` con jobs `[dev <usuario>] …`, para probar cambios antes del PR. `prod` (`/Workspace/Shared/ocean_watch_analytics/prod`) no se despliega a mano: lo hace la GitHub Action [`deploy.yml`](../../.github/workflows/deploy.yml) en cada merge a `main`, después de los tests y de `bundle validate`. Usa los secretos del repo `DATABRICKS_HOST` y `DATABRICKS_TOKEN`.
+
 Para la ejecución programada: `databricks bundle deploy -t dev --var alert_email=... --var schedule_status=UNPAUSED`.
 
 ## Demostraciones para la sustentación
