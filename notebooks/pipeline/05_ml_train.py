@@ -27,7 +27,11 @@ from mlflow.tracking import MlflowClient
 
 from oceanwatch import config, ml
 
+from databricks.sdk import WorkspaceClient
+
 mlflow.set_registry_uri("databricks-uc")
+# MLflow no crea la carpeta padre del experimento: si no existe, set_experiment falla con NOT_FOUND.
+WorkspaceClient().workspace.mkdirs(config.ML_EXPERIMENT_NAME.rsplit("/", 1)[0])
 mlflow.set_experiment(config.ML_EXPERIMENT_NAME)
 
 # COMMAND ----------
