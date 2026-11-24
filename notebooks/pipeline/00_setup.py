@@ -43,7 +43,11 @@ SCHEMAS = {
     config.SCHEMA_ML: "Modelos registrados en Unity Catalog",
 }
 
-spark.sql(f"CREATE CATALOG IF NOT EXISTS {config.CATALOG} COMMENT 'OceanWatch Analytics: lakehouse del tráfico marítimo (MINE 4213, 2026-20)'")
+# Unity Catalog exige CREATE CATALOG sobre el metastore aun con IF NOT EXISTS, y ese permiso
+# solo lo tiene el administrador. Si el catálogo ya existe, no se intenta crear: así cualquier
+# integrante con permisos sobre el catálogo puede volver a correr el setup.
+if spark.sql(f"SHOW CATALOGS LIKE '{config.CATALOG}'").count() == 0:
+    spark.sql(f"CREATE CATALOG {config.CATALOG} COMMENT 'OceanWatch Analytics: lakehouse del tráfico marítimo (MINE 4213, 2026-20)'")
 for schema, comment in SCHEMAS.items():
     spark.sql(f"CREATE SCHEMA IF NOT EXISTS {config.CATALOG}.{schema} COMMENT '{comment}'")
 
