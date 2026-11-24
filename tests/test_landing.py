@@ -43,6 +43,18 @@ def test_deliver_and_skip(tmp_path):
     assert landing.next_pending_day(str(tmp_path / "nada"), "2023-06-08") == DAY
 
 
+def test_resolve_day_stops_at_end(tmp_path):
+    m = tmp_path / "m"
+    m.mkdir()
+    for d in ("07", "08"):
+        (m / f"AIS_2023_06_{d}.json").write_text("{}")
+    start = "2023-06-07"
+    assert landing.resolve_day("auto", str(m), start, "2023-06-09") == date(2023, 6, 9)
+    assert landing.resolve_day(" AUTO ", str(m), start, "2023-06-08") is None  # feed terminado
+    # Una fecha explícita (backfill) no tiene tope.
+    assert landing.resolve_day("2023-07-01", str(m), start, "2023-06-08") == date(2023, 7, 1)
+
+
 def test_bad_header_leaves_nothing(tmp_path):
     bad = "MMSI,LAT,LON\n1,2,3\n"
     with pytest.raises(landing.IntegrityError):

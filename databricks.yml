@@ -18,6 +18,10 @@ variables:
   schedule_status:
     description: PAUSED o UNPAUSED. Se despausa para la demostración de la ejecución programada.
     default: PAUSED
+  warehouse_id:
+    description: SQL warehouse que ejecuta las consultas de la consola
+    lookup:
+      warehouse: Serverless Starter Warehouse
 
 # Todo el equipo (los usuarios del workspace) puede ver, correr y editar los jobs y la carpeta.
 permissions:
@@ -39,8 +43,18 @@ targets:
       root_path: /Workspace/Shared/ocean_watch_analytics/prod
     variables:
       alert_email: jd.perezm@uniandes.edu.co
+      # La carga automática corre en prod: un día por hora hasta FEED_END_DATE (config.py).
+      schedule_status: UNPAUSED
 
 resources:
+  dashboards:
+    # Consola (requisito 4). El JSON se genera desde el tablero; las consultas están
+    # documentadas en dashboards/consola.sql.
+    consola:
+      display_name: OceanWatch · Consola
+      file_path: ./dashboards/consola.lvdash.json
+      warehouse_id: ${var.warehouse_id}
+
   jobs:
     ocean_watch_daily:
       name: ocean_watch_daily
@@ -60,7 +74,7 @@ resources:
           default: "no"
 
       schedule:
-        quartz_cron_expression: "0 0 6 * * ?"
+        quartz_cron_expression: "0 0 * * * ?"  # cada hora: un día del feed por corrida
         timezone_id: America/Bogota
         pause_status: ${var.schedule_status}
 
@@ -90,10 +104,22 @@ resources:
           retry_on_timeout: true
           timeout_seconds: 1800
 
+        # Con fecha=auto, cuando ya se entregó FEED_END_DATE landing publica hay_dia=no y el
+        # resto del job se salta: la corrida programada termina bien sin procesar nada.
+        - task_key: hay_dia
+          description: ¿Landing entregó un día? Si no, se saltan bronce, plata, oro y ML
+          depends_on:
+            - task_key: landing
+          condition_task:
+            op: EQUAL_TO
+            left: "{{tasks.landing.values.hay_dia}}"
+            right: "si"
+
         - task_key: bronze
           description: Auto Loader de landing/ a ocean_watch.bronze.ais
           depends_on:
-            - task_key: landing
+            - task_key: hay_dia
+              outcome: "true"
           notebook_task:
             notebook_path: ./notebooks/pipeline/02_bronze.py
           max_retries: 2
@@ -120,7 +146,7 @@ resources:
           notebook_task:
             notebook_path: ./notebooks/pipeline/04_gold.py
             base_parameters:
-              fecha: "{{tasks.landing.values.fecha}}"
+              dia: "{{tasks.landing.values.fecha}}"
           max_retries: 2
           min_retry_interval_millis: 30000
           timeout_seconds: 3600
@@ -132,7 +158,7 @@ resources:
           notebook_task:
             notebook_path: ./notebooks/pipeline/06_ml_score.py
             base_parameters:
-              fecha: "{{tasks.landing.values.fecha}}"
+              dia: "{{tasks.landing.values.fecha}}"
           max_retries: 1
           min_retry_interval_millis: 30000
           timeout_seconds: 1800

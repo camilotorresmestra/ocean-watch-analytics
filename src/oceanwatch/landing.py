@@ -70,6 +70,18 @@ def next_pending_day(manifest_dir: str, start: str) -> date:
     return day
 
 
+def resolve_day(param: str, manifest_dir: str, start: str, end: str) -> date | None:
+    """Día que entrega esta corrida, o None si el feed automático ya llegó a `end`.
+
+    `param` es el parámetro `fecha` del job: "auto" o una fecha AAAA-MM-DD (backfill,
+    que no tiene tope).
+    """
+    if param.strip().lower() != "auto":
+        return parse_day(param.strip())
+    day = next_pending_day(manifest_dir, start)
+    return day if day <= parse_day(end) else None
+
+
 def verify_zip(zip_path: str, expected_member: str) -> zipfile.ZipInfo:
     with zipfile.ZipFile(zip_path) as zf:
         names = zf.namelist()

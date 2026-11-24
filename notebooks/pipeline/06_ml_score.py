@@ -6,7 +6,9 @@
 
 # COMMAND ----------
 
-dbutils.widgets.text("fecha", "", "Fecha (AAAA-MM-DD)")
+# "dia" y no "fecha": un parámetro del job se pasa a todas las tareas y reemplaza al de la
+# tarea con el mismo nombre, así que fecha=auto pisaría el día que resolvió landing.
+dbutils.widgets.text("dia", "", "Día (AAAA-MM-DD)")
 
 # COMMAND ----------
 
@@ -29,8 +31,8 @@ from oceanwatch import config, contract, gold, ml
 mlflow.set_registry_uri("databricks-uc")
 spark.conf.set("spark.sql.session.timeZone", config.SESSION_TIMEZONE)
 
-day = dbutils.widgets.get("fecha").strip()
-assert day, "El parámetro fecha es obligatorio"
+day = dbutils.widgets.get("dia").strip()
+assert day, "El parámetro dia es obligatorio"
 
 # COMMAND ----------
 

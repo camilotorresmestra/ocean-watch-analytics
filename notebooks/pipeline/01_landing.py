@@ -27,12 +27,15 @@ sys.path.append(os.path.abspath("../../src"))
 from oceanwatch import config, landing
 
 fecha_param = dbutils.widgets.get("fecha").strip()
-day = (
-    landing.next_pending_day(config.MANIFEST_DIR, config.FEED_START_DATE)
-    if fecha_param.lower() == "auto"
-    else landing.parse_day(fecha_param)
-)
+day = landing.resolve_day(fecha_param, config.MANIFEST_DIR, config.FEED_START_DATE, config.FEED_END_DATE)
 print(f"Parámetro: {fecha_param} -> día a entregar: {day}")
+
+# Feed automático terminado: la tarea `hay_dia` del job salta bronce, plata, oro y ML.
+dbutils.jobs.taskValues.set(key="hay_dia", value="si" if day else "no")
+if day is None:
+    dbutils.jobs.taskValues.set(key="fecha", value="")
+    dbutils.jobs.taskValues.set(key="landing_status", value="feed_terminado")
+    dbutils.notebook.exit(f"Feed terminado: todos los días hasta {config.FEED_END_DATE} ya se entregaron")
 
 # COMMAND ----------
 
