@@ -63,6 +63,9 @@ NOAA_URL = "https://coast.noaa.gov/htdata/CMSP/AISDataHandler/{year}/AIS_{year}_
 # Primer día del feed de la Entrega 2: el día siguiente al corpus de la Entrega 1
 # (2023-06-01 a 2023-06-07), que sirve de referencia para las celdas navegables.
 FEED_START_DATE = "2023-06-08"
+# Último día que entrega el modo automático (fecha=auto). Después el job programado termina
+# sin hacer nada; una fecha explícita (backfill) sí puede pasar de este tope.
+FEED_END_DATE = "2023-06-21"
 
 # Máscara de tierra: polígonos de Natural Earth (dominio público).
 NATURAL_EARTH_LAND_URL = (

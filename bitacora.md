@@ -253,3 +253,35 @@ Pendiente:
 - Armar el tablero con `dashboards/consola.sql` y exportarlo al repo.
 - Crear los grupos `oceanwatch_ingenieros`, `oceanwatch_analistas` y `oceanwatch_cientificos`, o cambiar sus nombres en `config.py`.
 - Bono de Delta Sharing.
+
+## 2026-11-23 · Despliegue en Databricks, CI/CD, consola y carga automática
+
+Autor: Juan (con Claude Code).
+
+Avance:
+
+- Bundle desplegado por primera vez. `dev` en `/Workspace/Shared/ocean_watch_analytics/<usuario>/dev` y `prod` en `/Workspace/Shared/ocean_watch_analytics/prod`. `prod` lo despliega una GitHub Action en cada merge a `main`, después de los tests y de `bundle validate` (PR #11).
+- `ocean_watch_setup` corrió bien: esquemas por capa, Volume, referencias y tablas de plata.
+- Primeros días del feed (Auto Loader, compuertas, oro), con oro conciliado con plata en cada día:
+
+| Día | Plata | Cuarentena | % aprobadas |
+|---|---|---|---|
+| 2023-06-08 | 8.905.550 | 14.894 | 99,83 |
+| 2023-06-09 | 8.774.693 | 16.431 | 99,81 |
+| 2023-06-10 | 7.779.949 | 14.168 | 99,82 |
+
+- `posicion_en_agua` rechazó el 0,045% del 2023-06-08, la mitad de lo medido en local (0,09%), porque en Databricks la referencia navegable es la semana completa de la Entrega 1.
+- Consola (requisito 4) como recurso del bundle: `dashboards/consola.lvdash.json`, con indicadores, mapa por celda H3, ranking de puertos, tráfico por hora, calidad por regla, anomalías y buques en puerto, filtrados por día.
+- Carga automática: el job diario corre cada hora con `fecha=auto` hasta `FEED_END_DATE` (2023-06-21). Después, la tarea `hay_dia` salta el resto del job y la corrida programada termina bien sin procesar nada.
+
+Issues encontrados:
+
+- **Parámetro del job que pisa el de la tarea.** En Databricks, un parámetro del job se pasa a todas las tareas y reemplaza al de la tarea con el mismo nombre. En `prod`, `fecha=auto` llegó a `gold` en lugar del día que resolvió `landing`, y oro falló con `CAST_INVALID_INPUT` (plata del 2023-06-09 sí se cargó). En `dev` no se vio porque la fecha era explícita. Se renombró el parámetro de `gold` y `ml_score` a `dia`, y el 2023-06-09 se reconstruyó con un backfill (`fecha=2023-06-09`): landing lo omitió y oro se reescribió con los mismos conteos de plata.
+- **`CREATE CATALOG IF NOT EXISTS` exige permiso sobre el metastore** aun si el catálogo existe, así que `00_setup` le fallaba a quien no es admin. Ahora solo lo crea si no existe.
+- **Los `GRANT` por rol no se aplicaron**: los grupos `oceanwatch_*` no existen en el workspace. Pendiente.
+
+Pendiente:
+
+- Mover el pipeline al workspace institucional (lo exige el enunciado); este workspace, de Free Edition, queda como consumidor del bono de Delta Sharing.
+- Entrenar el modelo con los días cargados.
+- Grupos y permisos por rol.
