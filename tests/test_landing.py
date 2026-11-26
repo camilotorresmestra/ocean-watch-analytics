@@ -55,6 +55,23 @@ def test_resolve_day_stops_at_end(tmp_path):
     assert landing.resolve_day("2023-07-01", str(m), start, "2023-06-08") == date(2023, 7, 1)
 
 
+def test_normalize_csv2_schema(tmp_path):
+    source = tmp_path / "source.csv"
+    target = tmp_path / "target.csv"
+    source.write_text(
+        "mmsi,base_date_time,longitude,latitude,sog,cog,heading,vessel_name,imo,call_sign,"
+        "vessel_type,status,length,width,draft,cargo,transceiver\n"
+        "367000001,2023-06-08 00:00:01,-80,30,1,2,511,X,,,70,0,1,1,1,,A\n"
+    )
+
+    landing.normalize_csv(str(source), str(target))
+
+    assert target.read_text().splitlines() == [
+        ",".join(EXPECTED_COLUMNS),
+        "367000001,2023-06-08T00:00:01,30,-80,1,2,511,X,,,70,0,1,1,1,,A",
+    ]
+
+
 def test_bad_header_leaves_nothing(tmp_path):
     bad = "MMSI,LAT,LON\n1,2,3\n"
     with pytest.raises(landing.IntegrityError):

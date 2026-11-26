@@ -5,11 +5,11 @@
       "displayName": "Resumen del día",
       "queryLines": [
         "SELECT ",
-        "(SELECT COUNT(*) FROM ocean_watch.gold.vessel_daily_track WHERE day = :fecha) AS buques, ",
-        "(SELECT SUM(positions) FROM ocean_watch.gold.vessel_daily_track WHERE day = :fecha) AS posiciones, ",
+        "(SELECT COUNT(*) FROM proyecto.equipo3_gold.vessel_daily_track WHERE day = :fecha) AS buques, ",
+        "(SELECT SUM(positions) FROM proyecto.equipo3_gold.vessel_daily_track WHERE day = :fecha) AS posiciones, ",
         "(SELECT SUM(CASE WHEN metric = 'aprobadas' THEN rows END) / SUM(CASE WHEN metric = 'aprobadas' THEN total_rows END) ",
-        "FROM ocean_watch.silver.quality_metrics WHERE day = :fecha) AS pct_aprobadas, ",
-        "(SELECT COUNT(DISTINCT port_index) FROM ocean_watch.gold.port_presence WHERE day = :fecha) AS puertos "
+        "FROM proyecto.equipo3_silver.quality_metrics WHERE day = :fecha) AS pct_aprobadas, ",
+        "(SELECT COUNT(DISTINCT port_index) FROM proyecto.equipo3_gold.port_presence WHERE day = :fecha) AS puertos "
       ],
       "parameters": [
         {
@@ -39,7 +39,7 @@
         "SUM(positions) AS positions, ",
         "MAX(vessels) AS max_vessels_in_hour, ",
         "ROUND(AVG(avg_sog), 2) AS avg_sog ",
-        "FROM ocean_watch.gold.traffic_cell_hourly ",
+        "FROM proyecto.equipo3_gold.traffic_cell_hourly ",
         "WHERE day = :fecha ",
         "GROUP BY h3_cell ",
         "ORDER BY positions DESC ",
@@ -68,7 +68,7 @@
       "displayName": "Tráfico por hora",
       "queryLines": [
         "SELECT hour, SUM(positions) AS positions, SUM(vessels) AS vessel_cells ",
-        "FROM ocean_watch.gold.traffic_cell_hourly ",
+        "FROM proyecto.equipo3_gold.traffic_cell_hourly ",
         "WHERE day = :fecha ",
         "GROUP BY hour ",
         "ORDER BY hour "
@@ -99,7 +99,7 @@
         "COUNT(DISTINCT MMSI) AS vessels, ",
         "COUNT(DISTINCT CASE WHEN stopped_positions > 0 THEN MMSI END) AS vessels_stopped, ",
         "ROUND(SUM(minutes_in_port) / 60, 1) AS vessel_hours_in_port ",
-        "FROM ocean_watch.gold.port_presence ",
+        "FROM proyecto.equipo3_gold.port_presence ",
         "WHERE day = :fecha ",
         "GROUP BY port_name ",
         "ORDER BY vessels DESC ",
@@ -130,8 +130,8 @@
         "SELECT p.port_name, p.MMSI, p.vessel_name, ",
         "COALESCE(t.vessel_category, 'Sin tipo') AS vessel_category, ",
         "p.arrival_ts, p.departure_ts, p.minutes_in_port, p.stopped_positions ",
-        "FROM ocean_watch.gold.port_presence AS p ",
-        "LEFT JOIN ocean_watch.raw.vessel_type_catalog AS t ON t.VesselType = p.vessel_type ",
+        "FROM proyecto.equipo3_gold.port_presence AS p ",
+        "LEFT JOIN proyecto.equipo3_raw.vessel_type_catalog AS t ON t.VesselType = p.vessel_type ",
         "WHERE p.day = :fecha ",
         "ORDER BY p.port_name, p.arrival_ts "
       ],
@@ -161,8 +161,8 @@
         "COALESCE(t.vessel_category, 'Sin tipo') AS vessel_category, ",
         "ROUND(a.anomaly_score, 4) AS anomaly_score, ",
         "a.rule_flag, a.avg_sog, a.max_sog, a.max_implied_knots, a.distance_km, a.model_version ",
-        "FROM ocean_watch.gold.vessel_speed_anomalies AS a ",
-        "LEFT JOIN ocean_watch.raw.vessel_type_catalog AS t ON t.VesselType = a.vessel_type ",
+        "FROM proyecto.equipo3_gold.vessel_speed_anomalies AS a ",
+        "LEFT JOIN proyecto.equipo3_raw.vessel_type_catalog AS t ON t.VesselType = a.vessel_type ",
         "WHERE a.day = :fecha AND a.is_anomaly ",
         "ORDER BY a.anomaly_score DESC "
       ],
@@ -189,7 +189,7 @@
       "displayName": "Calidad del día",
       "queryLines": [
         "SELECT metric, category, SUM(rows) AS rows, SUM(rows) / SUM(total_rows) AS pct ",
-        "FROM ocean_watch.silver.quality_metrics ",
+        "FROM proyecto.equipo3_silver.quality_metrics ",
         "WHERE day = :fecha AND category <> 'resumen' ",
         "GROUP BY metric, category ",
         "ORDER BY rows DESC "

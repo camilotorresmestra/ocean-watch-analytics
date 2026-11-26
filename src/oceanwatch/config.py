@@ -7,13 +7,13 @@ Un solo lugar para estos valores evita que los notebooks se desalineen
 # ---------------------------------------------------------------------------
 # Catálogo y esquemas, uno por capa. Los permisos por rol (requisito 5) se dan por esquema.
 # ---------------------------------------------------------------------------
-CATALOG = "ocean_watch"
-SCHEMA_RAW = "raw"  # Entrega 1: datos de la fuente y tablas de referencia
-SCHEMA_REF = "ref"  # tablas de referencia del pipeline (máscara de tierra, celdas navegables)
-SCHEMA_BRONZE = "bronze"
-SCHEMA_SILVER = "silver"
-SCHEMA_GOLD = "gold"
-SCHEMA_ML = "ml"
+CATALOG = "proyecto"
+SCHEMA_RAW = "equipo3_raw"  # Entrega 1: datos de la fuente y tablas de referencia
+SCHEMA_REF = "equipo3_ref"  # tablas de referencia del pipeline (máscara de tierra, celdas navegables)
+SCHEMA_BRONZE = "equipo3_bronze"
+SCHEMA_SILVER = "equipo3_silver"
+SCHEMA_GOLD = "equipo3_gold"
+SCHEMA_ML = "equipo3_ml"
 
 
 def table(schema: str, name: str) -> str:
@@ -57,9 +57,10 @@ CHECKPOINT_BRONZE = f"{CHECKPOINT_DIR}/bronze_ais"
 CHECKPOINT_SILVER = f"{CHECKPOINT_DIR}/silver_ais"
 
 # ---------------------------------------------------------------------------
-# Fuente NOAA Marine Cadastre: un zip por día con un CSV adentro.
+# Fuente NOAA Marine Cadastre: un CSV por día comprimido con Zstandard.
 # ---------------------------------------------------------------------------
-NOAA_URL = "https://coast.noaa.gov/htdata/CMSP/AISDataHandler/{year}/AIS_{year}_{month:02d}_{day:02d}.zip"
+NOAA_URL = "https://noaaocm.blob.core.windows.net/ais/csv2/csv{year}/ais-{year}-{month:02d}-{day:02d}.csv.zst"
+
 # Primer día del feed de la Entrega 2: el día siguiente al corpus de la Entrega 1
 # (2023-06-01 a 2023-06-07), que sirve de referencia para las celdas navegables.
 FEED_START_DATE = "2023-06-08"

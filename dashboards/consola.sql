@@ -13,7 +13,7 @@ SELECT
   SUM(positions)                   AS positions,
   MAX(vessels)                     AS max_vessels_in_hour,
   ROUND(AVG(avg_sog), 2)           AS avg_sog
-FROM ocean_watch.gold.traffic_cell_hourly
+FROM proyecto.equipo3_gold.traffic_cell_hourly
 WHERE day = :fecha
 GROUP BY h3_cell
 ORDER BY positions DESC
@@ -23,7 +23,7 @@ LIMIT 5000;
 -- 2. Tráfico por hora del día (visualización: Line)
 -- ---------------------------------------------------------------------------
 SELECT hour, SUM(positions) AS positions, SUM(vessels) AS vessel_cells
-FROM ocean_watch.gold.traffic_cell_hourly
+FROM proyecto.equipo3_gold.traffic_cell_hourly
 WHERE day = :fecha
 GROUP BY hour
 ORDER BY hour;
@@ -37,7 +37,7 @@ SELECT
   COUNT(DISTINCT MMSI)                                   AS vessels,
   COUNT(DISTINCT CASE WHEN stopped_positions > 0 THEN MMSI END) AS vessels_stopped,
   ROUND(SUM(minutes_in_port) / 60, 1)                    AS vessel_hours_in_port
-FROM ocean_watch.gold.port_presence
+FROM proyecto.equipo3_gold.port_presence
 WHERE day = :fecha
 GROUP BY port_name, country_code
 ORDER BY vessels DESC
@@ -55,8 +55,8 @@ SELECT
   p.departure_ts,
   p.minutes_in_port,
   p.stopped_positions
-FROM ocean_watch.gold.port_presence AS p
-LEFT JOIN ocean_watch.raw.vessel_type_catalog AS t ON t.VesselType = p.vessel_type
+FROM proyecto.equipo3_gold.port_presence AS p
+LEFT JOIN proyecto.equipo3_raw.vessel_type_catalog AS t ON t.VesselType = p.vessel_type
 WHERE p.day = :fecha
 ORDER BY p.port_name, p.arrival_ts;
 
@@ -74,8 +74,8 @@ SELECT
   a.max_implied_knots,
   a.distance_km,
   a.model_version
-FROM ocean_watch.gold.vessel_speed_anomalies AS a
-LEFT JOIN ocean_watch.raw.vessel_type_catalog AS t ON t.VesselType = a.vessel_type
+FROM proyecto.equipo3_gold.vessel_speed_anomalies AS a
+LEFT JOIN proyecto.equipo3_raw.vessel_type_catalog AS t ON t.VesselType = a.vessel_type
 WHERE a.day = :fecha AND a.is_anomaly
 ORDER BY a.anomaly_score DESC;
 
@@ -83,7 +83,7 @@ ORDER BY a.anomaly_score DESC;
 -- 6. Calidad del día (visualización: Counter y Bar por regla)
 -- ---------------------------------------------------------------------------
 SELECT metric, category, SUM(rows) AS rows, ROUND(100 * SUM(rows) / SUM(total_rows), 3) AS pct
-FROM ocean_watch.silver.quality_metrics
+FROM proyecto.equipo3_silver.quality_metrics
 WHERE day = :fecha
 GROUP BY metric, category
 ORDER BY category, rows DESC;

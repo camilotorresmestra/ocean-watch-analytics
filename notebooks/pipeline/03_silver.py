@@ -2,7 +2,7 @@
 # MAGIC %md
 # MAGIC # 03 · Plata: compuertas de calidad
 # MAGIC
-# MAGIC Lee `ocean_watch.bronze.ais` en streaming y, por micro-lote (`foreachBatch`):
+# MAGIC Lee `proyecto.equipo3_bronze.ais` en streaming y, por micro-lote (`foreachBatch`):
 # MAGIC
 # MAGIC 1. Evalúa las compuertas (`src/oceanwatch/rules.py`): `lectura_valida`, `mmsi_formato`, `timestamp_presente`, `fecha_del_archivo`, `coordenadas_en_rango`, `coordenadas_no_cero`, `posicion_en_agua` y `velocidad_plausible`.
 # MAGIC 2. Marca como duplicadas las copias de una misma clave (`MMSI`, `BaseDateTime`) dentro del lote.

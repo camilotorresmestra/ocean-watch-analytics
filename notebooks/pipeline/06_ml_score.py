@@ -2,7 +2,7 @@
 # MAGIC %md
 # MAGIC # 06 · Puntuación diaria de anomalías de velocidad
 # MAGIC
-# MAGIC Última tarea del job diario. Carga el modelo `ocean_watch.ml.speed_anomaly_detector@champion` desde Unity Catalog, calcula las variables del día con la misma función del entrenamiento y escribe `gold.vessel_speed_anomalies` para el día (`replaceWhere`). Alimenta el panel de anomalías de la consola.
+# MAGIC Última tarea del job diario. Carga el modelo `proyecto.equipo3_ml.speed_anomaly_detector@champion` desde Unity Catalog, calcula las variables del día con la misma función del entrenamiento y escribe `equipo3_gold.vessel_speed_anomalies` para el día (`replaceWhere`). Alimenta el panel de anomalías de la consola.
 
 # COMMAND ----------
 

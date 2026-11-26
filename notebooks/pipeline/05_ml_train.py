@@ -6,7 +6,7 @@
 # MAGIC
 # MAGIC 1. **Variables** desde `gold.vessel_daily_track` con `oceanwatch.ml.build_features` (la misma función que usa la puntuación diaria).
 # MAGIC 2. **Experimento** MLflow con una corrida por valor de `contamination`; cada corrida registra parámetros, las mismas métricas y el modelo con su firma.
-# MAGIC 3. **Registro** en Unity Catalog (`ocean_watch.ml.speed_anomaly_detector`) de la mejor corrida, con el alias `champion`. La tarea diaria carga siempre `@champion`, así que cambiar de modelo no exige tocar el job.
+# MAGIC 3. **Registro** en Unity Catalog (`proyecto.equipo3_ml.speed_anomaly_detector`) de la mejor corrida, con el alias `champion`. La tarea diaria carga siempre `@champion`, así que cambiar de modelo no exige tocar el job.
 # MAGIC
 # MAGIC Sin etiquetas, la comparación entre corridas usa una señal independiente: las reglas físicas (`ml.rule_flag`). Se elige la corrida con mejor F1 contra esa señal. El objetivo es la integración reproducible, no la precisión.
 

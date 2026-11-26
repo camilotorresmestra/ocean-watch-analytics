@@ -1,4 +1,4 @@
-"""Descarga del zip diario de NOAA y entrega del CSV en landing/.
+"""Descarga del archivo diario de NOAA y entrega del CSV en landing/.
 
 Es la misma lógica de la sección 1.2 de la Entrega 1 (reintentos, integridad e
 idempotencia), parametrizada por fecha para que sea una tarea del job.
@@ -9,6 +9,7 @@ renombra: Auto Loader nunca ve un archivo a medio escribir.
 
 from __future__ import annotations
 
+import csv
 import hashlib
 import json
 import os
@@ -93,6 +94,90 @@ def verify_zip(zip_path: str, expected_member: str) -> zipfile.ZipInfo:
         return zf.getinfo(expected_member)
 
 
+def verify_zstd(zst_path: str) -> int:
+    """Verifica un archivo Zstandard y devuelve sus bytes descomprimidos."""
+    try:
+        import zstandard
+    except ImportError as exc:
+        raise RuntimeError("La fuente .csv.zst requiere la dependencia zstandard") from exc
+
+    total = 0
+    try:
+        with open(zst_path, "rb") as source, zstandard.ZstdDecompressor().stream_reader(source) as reader:
+            while chunk := reader.read(CHUNK):
+                total += len(chunk)
+    except zstandard.ZstdError as exc:
+        raise IntegrityError(f"Archivo Zstandard inválido: {zst_path}") from exc
+    return total
+
+
+def extract_zstd(zst_path: str, csv_path: str) -> int:
+    """Descomprime un CSV Zstandard en streaming y devuelve sus bytes escritos."""
+    try:
+        import zstandard
+    except ImportError as exc:
+        raise RuntimeError("La fuente .csv.zst requiere la dependencia zstandard") from exc
+
+    total = 0
+    try:
+        with open(zst_path, "rb") as source, zstandard.ZstdDecompressor().stream_reader(source) as reader, open(csv_path, "wb") as target:
+            while chunk := reader.read(CHUNK):
+                target.write(chunk)
+                total += len(chunk)
+    except zstandard.ZstdError as exc:
+        raise IntegrityError(f"Archivo Zstandard inválido: {zst_path}") from exc
+    return total
+
+
+SOURCE_COLUMNS = {
+    "MMSI": ("mmsi",),
+    "BaseDateTime": ("base_date_time",),
+    "LAT": ("latitude",),
+    "LON": ("longitude",),
+    "SOG": ("sog",),
+    "COG": ("cog",),
+    "Heading": ("heading",),
+    "VesselName": ("vessel_name",),
+    "IMO": ("imo",),
+    "CallSign": ("call_sign",),
+    "VesselType": ("vessel_type",),
+    "Status": ("status",),
+    "Length": ("length",),
+    "Width": ("width",),
+    "Draft": ("draft",),
+    "Cargo": ("cargo",),
+    "TransceiverClass": ("transceiver", "transceiver_class"),
+}
+
+
+def normalize_csv(source_path: str, target_path: str) -> None:
+    """Adapta csv2 al esquema legado del pipeline."""
+    with open(source_path, newline="", encoding="utf-8-sig") as source, open(
+        target_path, "w", newline="", encoding="utf-8"
+    ) as target:
+        reader = csv.reader(source)
+        try:
+            header = [column.strip().lower() for column in next(reader)]
+        except StopIteration as exc:
+            raise IntegrityError("CSV csv2 vacío") from exc
+
+        positions = {}
+        for canonical, aliases in SOURCE_COLUMNS.items():
+            matches = [header.index(alias) for alias in aliases if alias in header]
+            if not matches:
+                raise IntegrityError(f"Falta la columna csv2 para {canonical}: {aliases}")
+            positions[canonical] = matches[0]
+
+        writer = csv.writer(target, lineterminator="\n")
+        writer.writerow(EXPECTED_COLUMNS)
+        for row_number, row in enumerate(reader, start=2):
+            if len(row) != len(header):
+                raise IntegrityError(f"Fila {row_number} con {len(row)} columnas; se esperaban {len(header)}")
+            normalized = [row[positions[column]] for column in EXPECTED_COLUMNS]
+            normalized[1] = normalized[1].replace(" ", "T", 1)
+            writer.writerow(normalized)
+
+
 def download_with_retry(url: str, dest: str, expected_member: str, sleep=time.sleep) -> dict:
     last_exc: Exception | None = None
     for attempt in range(1, MAX_RETRIES + 1):
@@ -110,14 +195,20 @@ def download_with_retry(url: str, dest: str, expected_member: str, sleep=time.sl
             received = os.path.getsize(dest)
             if content_length is not None and received != int(content_length):
                 raise IntegrityError(f"Recibidos {received} bytes, se esperaban {content_length}")
-            info = verify_zip(dest, expected_member)
+            if url.lower().endswith(".zst"):
+                csv_bytes = verify_zstd(dest)
+                csv_crc32 = None
+            else:
+                info = verify_zip(dest, expected_member)
+                csv_bytes = info.file_size
+                csv_crc32 = f"{info.CRC:08x}"
             return {
                 "url": url,
                 "etag": etag,
                 "zip_bytes": received,
                 "zip_sha256": sha.hexdigest(),
-                "csv_bytes": info.file_size,
-                "csv_crc32": f"{info.CRC:08x}",
+                "csv_bytes": csv_bytes,
+                "csv_crc32": csv_crc32,
                 "attempts": attempt,
             }
         except urllib.error.HTTPError as exc:
@@ -163,22 +254,31 @@ def deliver_day(
     os.makedirs(landing_dir, exist_ok=True)
     os.makedirs(manifest_dir, exist_ok=True)
     os.makedirs(tmp_dir, exist_ok=True)
-    zip_path = os.path.join(tmp_dir, f"{f.stem}.zip")
+    archive_path = os.path.join(tmp_dir, f.stem + (".csv.zst" if url_template.lower().endswith(".zst") else ".zip"))
     # Auto Loader ignora los archivos que empiezan por "_" o ".".
     partial_path = os.path.join(landing_dir, f"_{f.csv_name}.partial")
+    raw_partial_path = os.path.join(landing_dir, f"_{f.csv_name}.raw.partial")
+    is_zstd = url_template.lower().endswith(".zst")
     try:
-        meta = downloader(f.url(url_template), zip_path, f.csv_name)
-        with zipfile.ZipFile(zip_path) as zf, zf.open(f.csv_name) as src, open(partial_path, "wb") as dst:
-            shutil.copyfileobj(src, dst, CHUNK)
+        source_url = f.url(url_template)
+        meta = downloader(source_url, archive_path, f.csv_name)
+        if is_zstd:
+            raw_written = extract_zstd(archive_path, raw_partial_path)
+            if raw_written != meta["csv_bytes"]:
+                raise IntegrityError(f"Descomprimidos {raw_written} bytes, se esperaban {meta['csv_bytes']}")
+            normalize_csv(raw_partial_path, partial_path)
+        else:
+            with zipfile.ZipFile(archive_path) as zf, zf.open(f.csv_name) as src, open(partial_path, "wb") as dst:
+                shutil.copyfileobj(src, dst, CHUNK)
         written = os.path.getsize(partial_path)
-        if written != meta["csv_bytes"]:
+        if not is_zstd and written != meta["csv_bytes"]:
             raise IntegrityError(f"Escritos {written} bytes, se esperaban {meta['csv_bytes']}")
         header = read_header(partial_path)
         if header != EXPECTED_COLUMNS:
             raise IntegrityError(f"Encabezado inesperado en {f.csv_name}: {header}")
         os.replace(partial_path, csv_path)
     finally:
-        for path in (zip_path, partial_path):
+        for path in (archive_path, partial_path, raw_partial_path):
             if os.path.exists(path):
                 os.remove(path)
 

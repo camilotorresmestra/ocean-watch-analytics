@@ -116,7 +116,7 @@ resources:
             right: "si"
 
         - task_key: bronze
-          description: Auto Loader de landing/ a ocean_watch.bronze.ais
+          description: Auto Loader de landing/ a proyecto.equipo3_bronze.ais
           depends_on:
             - task_key: hay_dia
               outcome: "true"
