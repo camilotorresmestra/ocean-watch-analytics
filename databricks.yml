@@ -38,7 +38,9 @@ targets:
       # development exige el usuario en la ruta: cada integrante despliega en su subcarpeta.
       root_path: /Workspace/Shared/ocean_watch_analytics/${workspace.current_user.userName}/${bundle.target}
   prod:
-    # Lo despliega la GitHub Action en cada merge a main (.github/workflows/deploy.yml).
+    # Hoy se despliega a mano desde main (databricks bundle deploy -t prod -p institucional): el
+    # workspace institucional no permite tokens personales. La GitHub Action lo hace solo si la
+    # variable del repo DEPLOY_ENABLED vale true (.github/workflows/deploy.yml).
     mode: production
     workspace:
       root_path: /Workspace/Shared/ocean_watch_analytics/prod
