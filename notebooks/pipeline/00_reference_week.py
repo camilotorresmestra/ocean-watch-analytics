@@ -62,3 +62,21 @@ summary = spark.table(config.RAW_AIS).groupBy("source_file").agg(
 display(summary)
 n_files = summary.count()
 assert n_files == (end - landing.parse_day(config.REFERENCE_WEEK_START)).days + 1, f"Se esperaban 7 archivos, hay {n_files}"
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Catálogo de tipos de buque
+# MAGIC
+# MAGIC La otra tabla de referencia de la Entrega 1 (sección 3b). La consola la usa para mostrar la categoría de cada buque en los paneles de buques en puerto y anomalías.
+
+# COMMAND ----------
+
+from oceanwatch import refs
+
+vessel_types = spark.createDataFrame(refs.vessel_type_rows(), "VesselType INT, vessel_category STRING")
+vessel_types.write.mode("overwrite").option("overwriteSchema", "true").saveAsTable(config.VESSEL_TYPE_CATALOG)
+spark.sql(f"COMMENT ON TABLE {config.VESSEL_TYPE_CATALOG} IS 'Catalogo de tipos de buque AIS (ITU-R M.1371, documentado por NOAA Marine Cadastre). Una fila por codigo de VesselType'")
+spark.sql(f"ALTER TABLE {config.VESSEL_TYPE_CATALOG} ALTER COLUMN VesselType COMMENT 'Codigo AIS de tipo de buque, 0 a 99'")
+spark.sql(f"ALTER TABLE {config.VESSEL_TYPE_CATALOG} ALTER COLUMN vessel_category COMMENT 'Categoria del codigo segun el catalogo AIS'")
+assert spark.table(config.VESSEL_TYPE_CATALOG).count() == 100
