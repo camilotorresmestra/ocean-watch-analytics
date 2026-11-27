@@ -6,17 +6,17 @@ Consumidores: la consola de OceanWatch (tablero) y el modelo de anomalías de ve
 
 ## Garantías comunes
 
-- Solo se construye a partir de `ocean_watch.silver.ais`: ningún registro en cuarentena llega a esta tabla.
+- Solo se construye a partir de `proyecto.equipo3_silver.ais`: ningún registro en cuarentena llega a esta tabla.
 - Se reescribe por día con `replaceWhere`: reprocesar un día deja el mismo resultado.
 - Frescura: el job diario actualiza el día procesado; el día se registra en la columna `day`.
 
 ## Acceso
 
-- `oceanwatch_analistas`: lectura de `ocean_watch.gold`.
-- `oceanwatch_cientificos`: lectura de plata y oro, escritura en `ocean_watch.ml`.
+- `oceanwatch_analistas`: lectura de `proyecto.equipo3_gold`.
+- `oceanwatch_cientificos`: lectura de plata y oro, escritura en `proyecto.equipo3_ml`.
 - `oceanwatch_ingenieros`: escritura en todas las capas.
 
-## `ocean_watch.gold.vessel_daily_track`
+## `proyecto.equipo3_gold.vessel_daily_track`
 
 Trayectoria diaria por buque: actividad, distancia recorrida, velocidades y ruta simplificada.
 
@@ -51,7 +51,7 @@ Trayectoria diaria por buque: actividad, distancia recorrida, velocidades y ruta
 | `end_lon` | Longitud de la última posición |
 | `track` | Ruta simplificada: primera posición de cada intervalo de 10 minutos, ordenada por tiempo |
 
-## `ocean_watch.gold.port_presence`
+## `proyecto.equipo3_gold.port_presence`
 
 Presencia de buques en puertos del World Port Index.
 
@@ -76,7 +76,7 @@ Presencia de buques en puertos del World Port Index.
 | `stopped_positions` | Posiciones dentro del radio con SOG por debajo de 0,5 nudos |
 | `min_distance_km` | Distancia mínima al punto de referencia del puerto, km |
 
-## `ocean_watch.gold.traffic_cell_hourly`
+## `proyecto.equipo3_gold.traffic_cell_hourly`
 
 Matriz de tráfico por celda espacial H3 (resolución 8) y hora.
 
@@ -94,7 +94,7 @@ Matriz de tráfico por celda espacial H3 (resolución 8) y hora.
 | `center_lat` | Latitud promedio de las posiciones de la celda en la hora |
 | `center_lon` | Longitud promedio de las posiciones de la celda en la hora |
 
-## `ocean_watch.gold.vessel_speed_anomalies`
+## `proyecto.equipo3_gold.vessel_speed_anomalies`
 
 Puntuación de anomalía de velocidad por buque y día, producida por el modelo registrado.
 
