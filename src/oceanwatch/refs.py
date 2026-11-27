@@ -97,3 +97,54 @@ def build_navigable_cells(
 
 def build_ports(world_port_index: DataFrame) -> DataFrame:
     return world_port_index.select("port_index", "port_name", "country_code", "LAT", "LON").where(geo.coords_in_range())
+
+
+# Catálogo de tipos de buque AIS (ITU-R M.1371, documentado por NOAA Marine Cadastre), el mismo
+# de la Entrega 1 (sección 3b). La consola lo usa para nombrar la categoría de cada buque.
+VESSEL_TYPE_RANGES = [
+    (0, 0, "Not available"),
+    (1, 19, "Reserved"),
+    (20, 29, "Wing in ground"),
+    (30, 30, "Fishing"),
+    (31, 32, "Towing"),
+    (33, 33, "Dredging or underwater ops"),
+    (34, 34, "Diving ops"),
+    (35, 35, "Military ops"),
+    (36, 36, "Sailing"),
+    (37, 37, "Pleasure craft"),
+    (38, 39, "Reserved"),
+    (40, 49, "High speed craft"),
+    (50, 50, "Pilot vessel"),
+    (51, 51, "Search and rescue"),
+    (52, 52, "Tug"),
+    (53, 53, "Port tender"),
+    (54, 54, "Anti-pollution equipment"),
+    (55, 55, "Law enforcement"),
+    (56, 57, "Spare, local vessel"),
+    (58, 58, "Medical transport"),
+    (59, 59, "Noncombatant ship"),
+    (60, 69, "Passenger"),
+    (70, 79, "Cargo"),
+    (80, 89, "Tanker"),
+    (90, 99, "Other type"),
+]
+
+
+def vessel_type_rows() -> list[tuple[int, str]]:
+    """Una fila (VesselType, vessel_category) por código de 0 a 99."""
+    return [(code, name) for low, high, name in VESSEL_TYPE_RANGES for code in range(low, high + 1)]
+
+
+
+# World Port Index (NGA). Copia versionada en data/reference/world_port_index.csv: es la misma
+# tabla de la Entrega 1 (sección 1.8, WPI.mdb convertido a grados decimales). Va en el repo porque
+# el serverless del workspace institucional no alcanza Google Drive, de donde se descargaba.
+WPI_CSV_RELATIVE = "data/reference/world_port_index.csv"
+WPI_SCHEMA = "port_index LONG, port_name STRING, country_code STRING, LAT DOUBLE, LON DOUBLE"
+WPI_COLUMN_COMMENTS = {
+    "port_index": "Numero del puerto en el World Port Index",
+    "port_name": "Nombre principal del puerto",
+    "country_code": "Codigo de pais del World Port Index",
+    "LAT": "Latitud del punto de referencia del puerto, grados decimales",
+    "LON": "Longitud del punto de referencia del puerto, grados decimales",
+}
