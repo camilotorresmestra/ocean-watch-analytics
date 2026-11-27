@@ -171,7 +171,16 @@ resources:
         on_failure:
           - ${var.alert_email}
       tasks:
+        - task_key: reference_week
+          description: Semana de la Entrega 1 en raw.ais, insumo de las celdas navegables
+          notebook_task:
+            notebook_path: ./notebooks/pipeline/00_reference_week.py
+          max_retries: 1
+          timeout_seconds: 5400
+
         - task_key: setup
+          depends_on:
+            - task_key: reference_week
           notebook_task:
             notebook_path: ./notebooks/pipeline/00_setup.py
           max_retries: 1

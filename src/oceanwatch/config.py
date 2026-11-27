@@ -56,10 +56,22 @@ SCHEMA_DIR = f"{VOLUME_ROOT}/_schemas"
 CHECKPOINT_BRONZE = f"{CHECKPOINT_DIR}/bronze_ais"
 CHECKPOINT_SILVER = f"{CHECKPOINT_DIR}/silver_ais"
 
+# Semana de referencia de la Entrega 1 (2023-06-01 a 2023-06-07) en equipo3_raw. Solo la
+# usan las celdas navegables del setup; no pasa por bronce ni por el job diario.
+RAW_AIS = table(SCHEMA_RAW, "ais")
+RAW_VOLUME_ROOT = f"/Volumes/{CATALOG}/{SCHEMA_RAW}/ais_raw"
+RAW_CSV_DIR = f"{RAW_VOLUME_ROOT}/csv"
+RAW_MANIFEST_DIR = f"{RAW_VOLUME_ROOT}/_manifest"
+REFERENCE_WEEK_START = "2023-06-01"
+REFERENCE_WEEK_END = "2023-06-07"
+
 # ---------------------------------------------------------------------------
-# Fuente NOAA Marine Cadastre: un CSV por día comprimido con Zstandard.
+# Fuente NOAA Marine Cadastre: un zip por día con un CSV adentro.
 # ---------------------------------------------------------------------------
-NOAA_URL = "https://noaaocm.blob.core.windows.net/ais/csv2/csv{year}/ais-{year}-{month:02d}-{day:02d}.csv.zst"
+NOAA_URL = "https://coast.noaa.gov/htdata/CMSP/AISDataHandler/{year}/AIS_{year}_{month:02d}_{day:02d}.zip"
+# NOAA también publica el CSV en Zstandard (landing.py soporta ambos formatos), pero desde el
+# serverless del workspace institucional ese host corta la conexión (Errno 104, 2026-11-26).
+NOAA_URL_ZSTD = "https://noaaocm.blob.core.windows.net/ais/csv2/csv{year}/ais-{year}-{month:02d}-{day:02d}.csv.zst"
 
 # Primer día del feed de la Entrega 2: el día siguiente al corpus de la Entrega 1
 # (2023-06-01 a 2023-06-07), que sirve de referencia para las celdas navegables.
