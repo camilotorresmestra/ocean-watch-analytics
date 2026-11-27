@@ -285,3 +285,44 @@ Pendiente:
 - Mover el pipeline al workspace institucional (lo exige el enunciado); este workspace, de Free Edition, queda como consumidor del bono de Delta Sharing.
 - Entrenar el modelo con los días cargados.
 - Grupos y permisos por rol.
+
+## 2026-11-25 a 2026-11-27 · Migración al workspace institucional
+
+Autores: Camilo (catálogo y adaptación del código, PR #14) y Juan (con Claude Code: carga, demostraciones, ML y correcciones, PR #14 y #15).
+
+El equipo pedagógico creó el catálogo `proyecto` y dio a `mine-group3` `USE CATALOG` y `CREATE SCHEMA`. Recomendó esquemas con prefijo `equipo3_` y pasar su propiedad al grupo. No hay migración directa desde Free Edition (cuentas y metastores distintos): el pipeline se volvió a correr desde el repositorio.
+
+Avance:
+
+- Catálogo `proyecto`, esquemas `equipo3_raw`, `equipo3_ref`, `equipo3_bronze`, `equipo3_silver`, `equipo3_gold` y `equipo3_ml`, propiedad de `mine-group3` (PR #14, Camilo).
+- `prod` desplegado a mano desde `main` (`databricks bundle deploy -t prod -p institucional`). El despliegue desde GitHub queda apagado detrás de la variable `DEPLOY_ENABLED`: el workspace no permite tokens personales (`User does not have permission to use tokens`).
+- Carga de los 14 días (2023-06-08 a 2023-06-21) con el horario cada hora: 12 corridas programadas seguidas, todas exitosas (2026-11-26 21:00 a 2026-11-27 08:00). Las 11 que cargaron un día tardaron entre 4,6 y 8 minutos; la de las 08:00 terminó en 24 s, con el feed ya terminado.
+
+| | Filas |
+|---|---|
+| Bronce | 120.585.927 |
+| Plata | 120.388.331 (99,836%) |
+| Cuarentena | 197.596 (0,164%; entre 0,128% y 0,191% por día) |
+| Bronce − plata − cuarentena | 0 en cada uno de los 14 días |
+| Claves (`MMSI`, `BaseDateTime`) duplicadas en plata | 0 |
+
+  Bronce, plata y cuarentena son idénticos a la carga en Free Edition.
+- **Tolerancia a fallos demostrada en Databricks** (run 1024350428611280, `simular_fallo=si`, 2023-06-10): `silver` falló en el intento 1 después de escribir la cuarentena y terminó en el reintento automático. El día quedó con 7.779.949 filas y 7.779.949 claves distintas, y las métricas del lote fallido con 13 filas, como los demás lotes.
+- ML: v1 entrenada con 3 días (F1 0,52 contra `rule_flag`) y v2 con los 14 (F1 0,51, precisión 0,60, recall 0,45), que pasó a `@champion` sin tocar el job. Los 14 días se volvieron a puntuar con la v2: 274.241 buque-días, 5.485 anomalías. El F1 no es una medida independiente: `rule_flag` usa variables que también usa el modelo.
+
+Issues encontrados:
+
+- **Celdas navegables vacías.** La primera carga del 2023-06-08 mandó el 8,7% a cuarentena (766.319 filas por `posicion_en_agua`). `equipo3_raw.ais`, la semana de la Entrega 1 con la que se calculan las celdas navegables, no existía en el institucional, y `00_setup` solo lo avisa. Nueva tarea `reference_week` al inicio del job de setup, que la carga (60.533.559 filas, igual que en la Entrega 1). Con 365.794 celdas navegables, el día bajó a 0,17% (`posicion_en_agua` 0,045%). Plata, oro y el checkpoint de plata se reiniciaron y el día se reprocesó desde bronce.
+- **Red de salida restringida en el serverless del institucional.** `noaaocm.blob.core.windows.net` (CSV en Zstandard, que adoptó el PR #14) corta la conexión (`Errno 104 Connection reset by peer`), y `drive.google.com` no resuelve (`Temporary failure in name resolution`). `NOAA_URL` vuelve al zip de `coast.noaa.gov`, que sí responde; `landing.py` sigue aceptando los dos formatos. El World Port Index, que se descargaba de Drive, queda versionado en `data/reference/world_port_index.csv`: es la tabla de la Entrega 1 exportada tal cual (0 filas distintas contra la original con `EXCEPT` en ambos sentidos). Dos trampas de precisión en el camino: la exportación por la API de SQL recortaba el último dígito de algunos decimales (se exportó con `CAST(... AS STRING)`), y `pandas.read_csv` sin `float_precision="round_trip"` cambiaba 451 valores.
+- **Tablas que solo creaba el notebook de la Entrega 1.** `raw.vessel_type_catalog` no existía, así que los paneles *Buques en puerto* y *Anomalías* de la consola fallaban con `TABLE_OR_VIEW_NOT_FOUND`. Ahora `reference_week` crea esa tabla y el World Port Index, y también el esquema `equipo3_raw`, porque corre antes que `00_setup`.
+- **El estado local del bundle se reutiliza entre workspaces.** El primer `deploy` al institucional intentó actualizar los jobs de Free Edition (`Unable to find dashboard`) y no creó nada. Se movió `.databricks/bundle/<target>` a otra carpeta antes de desplegar.
+- **Permisos demasiado abiertos.** Los jobs y la consola daban `CAN_MANAGE` a `users`, que en el institucional son los estudiantes de todos los equipos. Ahora es `mine-group3`. El tablero y el código siguen editables por todos por herencia de `/Workspace/Shared`, y por eso la CI valida sin `--strict`.
+- **`GRANT` sobre el catálogo compartido.** `00_setup` daba `ALL PRIVILEGES ON CATALOG proyecto` a los ingenieros, en un catálogo que comparten todos los equipos. Los permisos por rol ahora van por esquema. Los analistas reciben además las dos tablas que usa la consola fuera de oro (`silver.quality_metrics` y `raw.vessel_type_catalog`).
+
+Pendiente:
+
+- Grupos `oceanwatch_*` (o autorización para dar los roles por usuario) y `USE CATALOG` sobre `proyecto` para ellos: los pide el equipo al profesor. Luego, correr el setup de `prod` para aplicar los `GRANT` y guardar `SHOW GRANTS` como evidencia.
+- Capturas de la consola y del linaje para la sustentación.
+- Pausar el horario de `prod` en el institucional y en Free Edition: el feed ya terminó.
+- Despliegue desde GitHub: un service principal para el workspace institucional.
+- Bono de Delta Sharing.

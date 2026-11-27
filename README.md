@@ -8,7 +8,8 @@ Proyecto del curso Soluciones Intensivas en Datos (MINE 4213, Uniandes 2026-20).
 ├── README.md
 ├── bitacora.md                   # avance, issues y decisiones por fecha y autor
 ├── databricks.yml                # jobs del pipeline como código (Databricks Asset Bundle)
-├── dashboards/consola.sql        # datasets de la consola (tablero)
+├── dashboards/                   # consola: consola.lvdash.json (recurso del bundle) y consola.sql
+├── data/reference/               # world_port_index.csv: copia de la tabla de puertos de la Entrega 1
 ├── docs/
 │   ├── enunciados/               # Entrega1.pdf y Entrega2.pdf
 │   └── contrato_oro.md           # contrato de datos de la capa oro (generado)
@@ -43,6 +44,8 @@ Ver [`notebooks/pipeline/README.md`](notebooks/pipeline/README.md): despliegue d
 
 ## Entrega 2
 
+Corre en el workspace institucional, catálogo `proyecto` (del curso), con un esquema por capa: `equipo3_raw`, `equipo3_ref`, `equipo3_bronze`, `equipo3_silver`, `equipo3_gold` y `equipo3_ml`, todos propiedad del grupo `mine-group3`. En el diagrama y en la tabla, `bronze.ais` abrevia `proyecto.equipo3_bronze.ais`, y así con las demás.
+
 ```
 NOAA zip ──01_landing──> landing/*.csv ──02_bronze (Auto Loader)──> bronze.ais
    ──03_silver (compuertas)──> silver.ais ──04_gold──> gold.vessel_daily_track ──06_ml_score──> gold.vessel_speed_anomalies
@@ -52,13 +55,27 @@ NOAA zip ──01_landing──> landing/*.csv ──02_bronze (Auto Loader)─�
 
 | # | Requisito | Dónde | Evidencia |
 |---|---|---|---|
-| 1 | Ingesta en streaming | `01_landing`, `02_bronze`, `03_silver` | Checkpoints en `/Volumes/ocean_watch/bronze/ais_feed/_checkpoints`; deduplicación por (`MMSI`, `BaseDateTime`) en plata; demostración `simular_fallo=si` |
-| 2 | Capas con calidad como compuerta | `src/oceanwatch/rules.py`, `silver.py`, `gold.py` | `silver.ais_quarantine` con `failed_rules`; `silver.quality_metrics`; oro solo lee plata y concilia sus conteos en `04_gold` |
-| 3 | Orquestación | `databricks.yml` | Job `ocean_watch_daily`: 5 tareas con dependencias, parámetro `fecha`, reintentos, alertas, regla de duración y horario |
-| 4 | Consola | `dashboards/consola.sql` | Mapa por celda, ranking de puertos, buques en puerto, anomalías y calidad del día |
-| 5 | Gobernanza | `00_setup`, `docs/contrato_oro.md` | Esquema por capa, `GRANT` por rol, comentarios del contrato en cada tabla de oro, linaje de Unity Catalog |
-| 6 | ML con MLflow | `05_ml_train`, `06_ml_score`, `src/oceanwatch/ml.py` | Experimento con 3 corridas, modelo en `ocean_watch.ml.speed_anomaly_detector@champion`, puntuación diaria en el job |
+| 1 | Ingesta en streaming | `01_landing`, `02_bronze`, `03_silver` | Checkpoints en `/Volumes/proyecto/equipo3_bronze/ais_feed/_checkpoints`; deduplicación por (`MMSI`, `BaseDateTime`) en plata: 0 claves duplicadas en los 14 días; corrida con `simular_fallo=si` (run 1024350428611280): plata falla en el intento 1, termina en el reintento y no duplica nada |
+| 2 | Capas con calidad como compuerta | `src/oceanwatch/rules.py`, `silver.py`, `gold.py` | `silver.ais_quarantine` con `failed_rules`; `silver.quality_metrics`; oro solo lee plata y concilia sus conteos en `04_gold`. Bronce = plata + cuarentena en cada uno de los 14 días |
+| 3 | Orquestación | `databricks.yml` | Job `ocean_watch_daily`: 6 tareas con dependencias (`landing`, `hay_dia`, `bronze`, `silver`, `gold`, `ml_score`), parámetros `fecha` y `simular_fallo`, reintentos, alertas, regla de duración y horario cada hora. 12 corridas programadas seguidas y exitosas (2026-11-26 21:00 a 2026-11-27 08:00) |
+| 4 | Consola | `dashboards/consola.lvdash.json`, `consola.sql` | Mapa por celda, ranking de puertos, buques en puerto, anomalías y calidad del día. Los paneles de negocio leen oro; los de calidad, `silver.quality_metrics`; las categorías de buque, `raw.vessel_type_catalog` |
+| 5 | Gobernanza | `00_setup`, `docs/contrato_oro.md` | Esquema por capa, comentarios del contrato en cada tabla de oro, linaje de Unity Catalog. `GRANT` por rol a nivel de esquema, **diseñados pero no aplicados**: los grupos `oceanwatch_*` no existen en el workspace |
+| 6 | ML con MLflow | `05_ml_train`, `06_ml_score`, `src/oceanwatch/ml.py` | Experimento con 3 corridas por entrenamiento, modelo en `proyecto.equipo3_ml.speed_anomaly_detector` (v1 con 3 días, v2 `@champion` con 14), puntuación diaria en el job |
 | 7 | Repositorio y bitácora | este README, `bitacora.md` | |
+
+### Estado en el workspace institucional (2026-11-27)
+
+| | Filas |
+|---|---|
+| Días cargados | 14 (2023-06-08 a 2023-06-21) |
+| `bronze.ais` | 120.585.927 |
+| `silver.ais` | 120.388.331 (99,836%) |
+| `silver.ais_quarantine` | 197.596 (0,164%; entre 0,128% y 0,191% por día) |
+| `gold.vessel_daily_track` / `port_presence` / `traffic_cell_hourly` | 293.701 / 285.558 / 12.724.841 |
+| `gold.vessel_speed_anomalies` | 274.241 buque-días puntuados con la v2, 5.485 anomalías |
+| `raw.ais` (semana de referencia de la Entrega 1) | 60.533.559 |
+
+Los conteos de bronce, plata y cuarentena son idénticos a los de la primera carga en Free Edition. El modelo v2 tiene F1 0,51 contra `ml.rule_flag` (precisión 0,60, recall 0,45). Esa señal comparte variables con el modelo (velocidad máxima, velocidad implícita), así que mide consistencia con las reglas, no precisión.
 
 ### Compuertas de plata
 
@@ -81,6 +98,8 @@ Sobre una muestra real de 300.000 filas del 2023-06-08, corrida de punta a punta
 ### Fuentes adicionales
 
 - **Natural Earth 10m** (`ne_10m_land`, `ne_10m_lakes`, v5.1.2, dominio público), para la máscara de tierra: <https://www.naturalearthdata.com/>.
+- **World Port Index** (NGA), el mismo de la Entrega 1, versionado en `data/reference/world_port_index.csv` (3.630 puertos). El serverless del workspace institucional no alcanza Google Drive, de donde se descargaba `WPI.mdb`; la copia es idéntica a la tabla original.
+- **Datos AIS:** el zip diario de `coast.noaa.gov`. NOAA también publica cada día como CSV en Zstandard (`noaaocm.blob.core.windows.net`, soportado por `landing.py`), pero ese host corta la conexión desde el serverless del institucional.
 
 ## Entrega 1
 
@@ -95,6 +114,8 @@ Las secciones siguientes documentan la Entrega 1 (`notebooks/entrega1/ingest.ipy
 - **Tipos de buque:** catálogo AIS de códigos `VesselType` (ITU-R M.1371, documentado por NOAA Marine Cadastre), cargado en 3b.
 
 ## Objetos en Unity Catalog
+
+Catálogo de la Entrega 1, en Databricks Free Edition. En la Entrega 2 la semana de referencia, el World Port Index y el catálogo de tipos de buque quedan en `proyecto.equipo3_raw` (tarea `reference_week` del job de setup).
 
 | Objeto | Contenido | Se crea en |
 |---|---|---|
