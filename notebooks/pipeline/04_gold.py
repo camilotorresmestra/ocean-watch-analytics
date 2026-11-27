@@ -2,7 +2,7 @@
 # MAGIC %md
 # MAGIC # 04 · Oro: modelo del negocio
 # MAGIC
-# MAGIC Construye para el día `fecha` las tres tablas del negocio, solo a partir de `ocean_watch.silver.ais`:
+# MAGIC Construye para el día `fecha` las tres tablas del negocio, solo a partir de `proyecto.equipo3_silver.ais`:
 # MAGIC
 # MAGIC | Tabla | Grano | Uso en la consola |
 # MAGIC |---|---|---|

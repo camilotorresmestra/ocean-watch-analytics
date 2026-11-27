@@ -10,7 +10,11 @@
 # MAGIC
 # MAGIC La fecha resuelta se publica como valor de tarea (`fecha`) para las tareas siguientes.
 # MAGIC
-# MAGIC Garantías (las de la Entrega 1, sección 1.2): reintentos con backoff de 10, 20, 40 y 80 s; bytes contra `Content-Length`; CRC-32 del zip; tamaño del CSV extraído; encabezado contra las 17 columnas esperadas. El CSV se escribe con un nombre temporal que empieza por `_` y se renombra al final, así Auto Loader nunca lee un archivo a medio escribir.
+# MAGIC Garantías: reintentos con backoff de 10, 20, 40 y 80 s; bytes contra `Content-Length`; CRC-32 del zip; tamaño del CSV extraído; encabezado contra las 17 columnas esperadas. `landing.py` también acepta la fuente csv2 en Zstandard (`config.NOAA_URL_ZSTD`), que se normaliza al mismo esquema, pero ese host no es alcanzable desde el serverless del workspace institucional. El CSV se escribe con nombres temporales que empiezan por `_` y se renombra al final, así Auto Loader nunca lee un archivo a medio escribir.
+
+# COMMAND ----------
+
+# MAGIC %pip install -q zstandard
 
 # COMMAND ----------
 

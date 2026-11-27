@@ -2,7 +2,7 @@
 # MAGIC %md
 # MAGIC # 02 · Bronce: Auto Loader
 # MAGIC
-# MAGIC Carga a `ocean_watch.bronze.ais` los CSV nuevos de `landing/` con Structured Streaming (`cloudFiles`).
+# MAGIC Carga a `proyecto.equipo3_bronze.ais` los CSV nuevos de `landing/` con Structured Streaming (`cloudFiles`).
 # MAGIC
 # MAGIC - **Checkpoint** en el Volume: guarda qué archivos ya se procesaron. Si la tarea se reinicia, no vuelve a cargar un archivo ya confirmado, y un archivo a medio cargar se repite completo (escritura Delta transaccional).
 # MAGIC - **`trigger(availableNow=True)`**: procesa lo pendiente y termina, para que la tarea del job tenga fin.

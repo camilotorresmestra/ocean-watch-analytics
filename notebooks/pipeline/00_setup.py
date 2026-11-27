@@ -43,11 +43,8 @@ SCHEMAS = {
     config.SCHEMA_ML: "Modelos registrados en Unity Catalog",
 }
 
-# Unity Catalog exige CREATE CATALOG sobre el metastore aun con IF NOT EXISTS, y ese permiso
-# solo lo tiene el administrador. Si el catálogo ya existe, no se intenta crear: así cualquier
-# integrante con permisos sobre el catálogo puede volver a correr el setup.
-if spark.sql(f"SHOW CATALOGS LIKE '{config.CATALOG}'").count() == 0:
-    spark.sql(f"CREATE CATALOG {config.CATALOG} COMMENT 'OceanWatch Analytics: lakehouse del tráfico marítimo (MINE 4213, 2026-20)'")
+# El catálogo `proyecto` es administrado por la institución y debe existir antes
+# de ejecutar este notebook. Este setup solo crea los schemas y objetos del equipo.
 for schema, comment in SCHEMAS.items():
     spark.sql(f"CREATE SCHEMA IF NOT EXISTS {config.CATALOG}.{schema} COMMENT '{comment}'")
 
@@ -65,7 +62,7 @@ for d in (config.LANDING_DIR, config.MANIFEST_DIR, config.CHECKPOINT_DIR, config
 # MAGIC
 # MAGIC **Máscara de tierra.** Polígonos de tierra de Natural Earth 10m (dominio público), menos los lagos, rellenados con celdas H3 de resolución 5. Una celda cuenta como *tierra adentro* solo si ella y todo su anillo 2 son tierra: así la costa, los muelles y los estuarios nunca quedan marcados. Toma alrededor de un minuto.
 # MAGIC
-# MAGIC **Celdas navegables.** Celdas H3 de resolución 7 que recorrieron al menos 2 buques distintos en la semana de la Entrega 1 (`ocean_watch.raw.ais`), dilatadas 1 anillo. Cubren los ríos y canales tierra adentro que Natural Earth marca como tierra (por ejemplo el Misisipi en St. Louis o el Columbia en Portland).
+# MAGIC **Celdas navegables.** Celdas H3 de resolución 7 que recorrieron al menos 2 buques distintos en la semana de la Entrega 1 (`proyecto.equipo3_raw.ais`), dilatadas 1 anillo. Cubren los ríos y canales tierra adentro que Natural Earth marca como tierra (por ejemplo el Misisipi en St. Louis o el Columbia en Portland).
 # MAGIC
 # MAGIC La regla `posicion_en_agua` de plata rechaza una posición solo si cae en tierra adentro **y** no en una celda navegable.
 # MAGIC
@@ -83,7 +80,7 @@ print(f"{config.REF_LAND_CELLS}: {spark.table(config.REF_LAND_CELLS).count():,} 
 if spark.catalog.tableExists(f"{config.CATALOG}.{config.SCHEMA_RAW}.ais"):
     reference = spark.table(f"{config.CATALOG}.{config.SCHEMA_RAW}.ais")
 else:
-    print("No existe ocean_watch.raw.ais (Entrega 1): las celdas navegables quedan vacías")
+    print("No existe proyecto.equipo3_raw.ais (Entrega 1): las celdas navegables quedan vacías")
     reference = spark.createDataFrame([], "MMSI STRING, LAT DOUBLE, LON DOUBLE")
 
 nav = refs.build_navigable_cells(reference)

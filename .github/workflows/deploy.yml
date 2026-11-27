@@ -1,9 +1,19 @@
 # CI/CD del pipeline (requisito 3: orquestación como código).
 #
 #   Pull request a main -> tests locales con Spark + validación del bundle.
-#   Push a main (merge)  -> tests + despliegue del bundle al target prod.
+#   Push a main (merge)  -> tests + validación; despliega al target prod solo si la
+#                           variable del repo DEPLOY_ENABLED vale "true".
 #
 # Solo despliega: no corre jobs. Requiere los secretos DATABRICKS_HOST y DATABRICKS_TOKEN.
+#
+# El despliegue automático está apagado: el workspace institucional no permite tokens
+# personales, así que GitHub no tiene cómo autenticarse ahí. Mientras tanto se despliega
+# a mano desde un computador con sesión OAuth:
+#
+#   databricks bundle deploy -t prod -p institucional
+#
+# Para reactivarlo: credenciales válidas para el workspace en los secretos y
+# DEPLOY_ENABLED=true en Settings > Secrets and variables > Actions > Variables.
 
 name: ci-deploy
 
@@ -50,7 +60,7 @@ jobs:
       - run: databricks bundle validate --strict -t prod
 
   deploy:
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    if: vars.DEPLOY_ENABLED == 'true' && github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     needs: [test, validate]
     runs-on: ubuntu-latest
     # Un despliegue a la vez; uno nuevo espera al anterior en lugar de cancelarlo.

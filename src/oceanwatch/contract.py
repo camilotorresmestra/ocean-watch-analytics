@@ -23,7 +23,7 @@ class TableContract:
 
 
 COMMON_GUARANTEES = [
-    "Solo se construye a partir de `ocean_watch.silver.ais`: ningún registro en cuarentena llega a esta tabla.",
+    "Solo se construye a partir de `proyecto.equipo3_silver.ais`: ningún registro en cuarentena llega a esta tabla.",
     "Se reescribe por día con `replaceWhere`: reprocesar un día deja el mismo resultado.",
     "Frescura: el job diario actualiza el día procesado; el día se registra en la columna `day`.",
 ]
