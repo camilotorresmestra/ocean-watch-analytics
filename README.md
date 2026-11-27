@@ -12,6 +12,7 @@ Proyecto del curso Soluciones Intensivas en Datos (MINE 4213, Uniandes 2026-20).
 ├── data/reference/               # world_port_index.csv: copia de la tabla de puertos de la Entrega 1
 ├── docs/
 │   ├── enunciados/               # Entrega1.pdf y Entrega2.pdf
+│   ├── presentacion/             # deck de la sustentación de la Entrega 2 (.pptx, con notas del orador)
 │   └── contrato_oro.md           # contrato de datos de la capa oro (generado)
 ├── notebooks/
 │   ├── entrega1/ingest.ipynb     # Entrega 1: ingesta, exploración, preguntas, almacenamiento y gobernanza
