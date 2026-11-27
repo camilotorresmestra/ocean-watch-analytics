@@ -23,9 +23,10 @@ variables:
     lookup:
       warehouse: Serverless Starter Warehouse
 
-# Todo el equipo (los usuarios del workspace) puede ver, correr y editar los jobs y la carpeta.
+# Todo el equipo (el grupo mine-group3 del workspace institucional) puede ver, correr y editar
+# los jobs, la consola y la carpeta. No `users`: ahí están los estudiantes de todos los equipos.
 permissions:
-  - group_name: users
+  - group_name: mine-group3
     level: CAN_MANAGE
 
 targets:

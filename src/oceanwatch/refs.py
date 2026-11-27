@@ -133,3 +133,18 @@ VESSEL_TYPE_RANGES = [
 def vessel_type_rows() -> list[tuple[int, str]]:
     """Una fila (VesselType, vessel_category) por código de 0 a 99."""
     return [(code, name) for low, high, name in VESSEL_TYPE_RANGES for code in range(low, high + 1)]
+
+
+
+# World Port Index (NGA). Copia versionada en data/reference/world_port_index.csv: es la misma
+# tabla de la Entrega 1 (sección 1.8, WPI.mdb convertido a grados decimales). Va en el repo porque
+# el serverless del workspace institucional no alcanza Google Drive, de donde se descargaba.
+WPI_CSV_RELATIVE = "data/reference/world_port_index.csv"
+WPI_SCHEMA = "port_index LONG, port_name STRING, country_code STRING, LAT DOUBLE, LON DOUBLE"
+WPI_COLUMN_COMMENTS = {
+    "port_index": "Numero del puerto en el World Port Index",
+    "port_name": "Nombre principal del puerto",
+    "country_code": "Codigo de pais del World Port Index",
+    "LAT": "Latitud del punto de referencia del puerto, grados decimales",
+    "LON": "Longitud del punto de referencia del puerto, grados decimales",
+}

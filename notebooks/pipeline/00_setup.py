@@ -119,24 +119,30 @@ spark.sql(f"COMMENT ON TABLE {config.SILVER_QUALITY_METRICS} IS 'Métricas de ca
 # MAGIC
 # MAGIC | Grupo | Permisos |
 # MAGIC |---|---|
-# MAGIC | `oceanwatch_ingenieros` | Todo en el catálogo: operan el pipeline |
+# MAGIC | `oceanwatch_ingenieros` | Todo en los esquemas del equipo: operan el pipeline |
 # MAGIC | `oceanwatch_cientificos` | Lectura de plata, oro y referencias; crear modelos en `ml` |
-# MAGIC | `oceanwatch_analistas` | Lectura de oro (tablero) |
+# MAGIC | `oceanwatch_analistas` | Lectura de oro, más las dos tablas que usa la consola fuera de oro (`silver.quality_metrics` y `raw.vessel_type_catalog`) |
+# MAGIC
+# MAGIC Los permisos se dan por **esquema**, nunca sobre el catálogo `proyecto`: es del curso y lo comparten todos los equipos. Por eso `USE CATALOG` sobre `proyecto` lo debe dar su dueño (el equipo pedagógico); sin él, los GRANT de esquema no bastan para leer.
 # MAGIC
 # MAGIC Los grupos deben existir en la cuenta. Si alguno no existe, la celda lo reporta y sigue.
 
 # COMMAND ----------
 
 C = config.CATALOG
+TEAM_SCHEMAS = (config.SCHEMA_RAW, config.SCHEMA_REF, config.SCHEMA_BRONZE,
+                config.SCHEMA_SILVER, config.SCHEMA_GOLD, config.SCHEMA_ML)
 GRANTS = [
-    (config.GROUP_ENGINEERS, f"GRANT ALL PRIVILEGES ON CATALOG {C} TO `{{g}}`"),
-    (config.GROUP_SCIENTISTS, f"GRANT USE CATALOG ON CATALOG {C} TO `{{g}}`"),
+    *[(config.GROUP_ENGINEERS, f"GRANT ALL PRIVILEGES ON SCHEMA {C}.{s} TO `{{g}}`") for s in TEAM_SCHEMAS],
     (config.GROUP_SCIENTISTS, f"GRANT USE SCHEMA, SELECT ON SCHEMA {C}.{config.SCHEMA_SILVER} TO `{{g}}`"),
     (config.GROUP_SCIENTISTS, f"GRANT USE SCHEMA, SELECT ON SCHEMA {C}.{config.SCHEMA_GOLD} TO `{{g}}`"),
     (config.GROUP_SCIENTISTS, f"GRANT USE SCHEMA, SELECT ON SCHEMA {C}.{config.SCHEMA_REF} TO `{{g}}`"),
     (config.GROUP_SCIENTISTS, f"GRANT USE SCHEMA, CREATE MODEL, CREATE TABLE ON SCHEMA {C}.{config.SCHEMA_ML} TO `{{g}}`"),
-    (config.GROUP_ANALYSTS, f"GRANT USE CATALOG ON CATALOG {C} TO `{{g}}`"),
     (config.GROUP_ANALYSTS, f"GRANT USE SCHEMA, SELECT ON SCHEMA {C}.{config.SCHEMA_GOLD} TO `{{g}}`"),
+    (config.GROUP_ANALYSTS, f"GRANT USE SCHEMA ON SCHEMA {C}.{config.SCHEMA_SILVER} TO `{{g}}`"),
+    (config.GROUP_ANALYSTS, f"GRANT SELECT ON TABLE {config.SILVER_QUALITY_METRICS} TO `{{g}}`"),
+    (config.GROUP_ANALYSTS, f"GRANT USE SCHEMA ON SCHEMA {C}.{config.SCHEMA_RAW} TO `{{g}}`"),
+    (config.GROUP_ANALYSTS, f"GRANT SELECT ON TABLE {config.VESSEL_TYPE_CATALOG} TO `{{g}}`"),
 ]
 
 for group, stmt in GRANTS:
@@ -150,5 +156,5 @@ for group, stmt in GRANTS:
 # COMMAND ----------
 
 # Evidencia del requisito 5.
-for schema in (config.SCHEMA_BRONZE, config.SCHEMA_SILVER, config.SCHEMA_GOLD, config.SCHEMA_ML):
+for schema in TEAM_SCHEMAS:
     display(spark.sql(f"SHOW GRANTS ON SCHEMA {config.CATALOG}.{schema}"))

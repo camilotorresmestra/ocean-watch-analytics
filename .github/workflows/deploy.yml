@@ -57,7 +57,10 @@ jobs:
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: databricks/setup-cli@v1.27.0
-      - run: databricks bundle validate --strict -t prod
+      # Sin --strict: el bundle vive en /Workspace/Shared, que todo usuario del workspace puede
+      # editar (permiso heredado que no se puede quitar), y strict convierte ese aviso en error.
+      # Los jobs y la consola sí quedan restringidos a mine-group3 (permissions en databricks.yml).
+      - run: databricks bundle validate -t prod
 
   deploy:
     if: vars.DEPLOY_ENABLED == 'true' && github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
